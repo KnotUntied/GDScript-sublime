@@ -1,310 +1,3655 @@
 %YAML 1.2
 ---
-# http://www.sublimetext.com/docs/3/syntax.html
-#
-# Useful references for GDScript lexical analysis:
-# - https://github.com/godotengine/godot-docs/blob/master/extensions/gdscript.py
-# - https://github.com/godotengine/godot/blob/master/modules/gdscript/gdscript_tokenizer.cpp
-name: GDScript (Godot Engine)
+name: GDScript
+scope: source.gdscript
+version: 4
+
 file_extensions:
   - gd
-scope: source.gdscript
 
 variables:
-  # Godot doesn't allow single underscore as var name, for example, `var x = _`
-  # and `func f(_)` are illegal. `func _()` and `_()`, however, are legal so this
-  # inconsistency might be a Godot bug.
-  identifier: \b[a-zA-Z_][a-zA-Z_0-9]*\b
+  # We support unicode here because Python 3 is the future
+  identifier_continue: '[[:alnum:]_]'
+  identifier: '[[:alpha:]_]{{identifier_continue}}*\b'
+  identifier_constant: '(?:[\p{Lu}_][\p{Lu}_\d]*)?[\p{Lu}]{2,}[\p{Lu}_\d]*\b'  # require 2 consecutive upper-case letters
+  digits: (?:\d+(?:_\d+)*)
+  exponent: (?:[eE][-+]?{{digits}})
+  path: '({{identifier}}[ ]*\.[ ]*)*{{identifier}}'
+  illegal_names: (?:and|as|assert|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|not|or|pass|raise|return|try|while|with|yield)
+
+  strftime_spec: (?:%(?:[aAwdbBGmyYHIpMSfzZjuUVWcxX%]|-[dmHIMSj]))
+
+  augmented_assignment_operators: |-
+    (?x: >>= | <<= | \*\*= | //= | \+= | -= | \*= | /= | %= | @= | &= | \|= | \^= )
+
+  assignment_operator: '=(?!=)'
+
+  colon: ':(?!=)'
+
+  string_prefix: '[bBrRfFuU]{,2}'
+
+  # Prefer ranged quantifiers over python interpolation in raw f-strings
+  fstring_regexp_interpolation_begin: '\{(?!\d+(?:,\d*)?\})'
+
+  builtin_functions: |-
+    (?x:
+      __import__ | all | abs | any | ascii | bin | callable | chr | classmethod
+    | compile | delattr | dir | divmod | enumerate | eval | filter | format
+    | getattr | globals | hasattr | hash | help | hex | id | input | isinstance
+    | issubclass | iter | len | locals | map | max | min | next | oct | open
+    | ord | pow | property | range | repr | reversed | round | setattr | sorted
+    | staticmethod | sum | super | type(?=\s*\() | vars | zip
+    # Python 2 functions
+    | apply | cmp | coerce | execfile | intern | raw_input | reduce | reload
+    | unichr | xrange
+    # Python 3 functions
+    | aiter| anext| breakpoint | exec | print
+    )\b
+
+  builtin_types: |-
+    (?x:
+      bool | bytearray | bytes | complex | dict | float | frozenset | int
+    | list | memoryview | object | set | slice | str | tuple
+    # Python 2 types
+    | basestring | long | unicode
+    # Python 2 types prone to conflicts
+    # | buffer | file
+    )\b
+
+  typing_functions: |-
+    (?x:
+      assert_type | assert_never | clear_overloads | dataclass_transform | final
+    | get_args | get_origin | get_overloads | get_type_hints | is_typeddict
+    | no_type_check | no_type_check_decorator | overload | override | reveal_type
+    | runtime_checkable
+    )\b
+
+  typing_types: |-
+    (?x:
+    # Super-special typing primitives.
+      Annotated | Any | Callable | ClassVar | Concatenate | Final | ForwardRef
+    | Generic | Literal | Optional | ParamSpec | Protocol | Tuple | Type
+    | TypeVar | TypeVarTuple | Union
+    # ABCs (from collections.abc).
+    | AbstractSet | ByteString | Container | ContextManager | Hashable | ItemsView
+    | Iterable | Iterator | KeysView | Mapping | MappingView | MutableMapping
+    | MutableSequence | MutableSet | Sequence | Sized | ValuesView | Awaitable
+    | AsyncIterator | AsyncIterable | Coroutine | Collection | AsyncGenerator
+    | AsyncContextManager
+    # Structural checks, a.k.a. protocols.
+    | Reversible | SupportsAbs | SupportsBytes | SupportsComplex | SupportsFloat
+    | SupportsIndex | SupportsInt | SupportsRound
+    # Concrete collection types.
+    | ChainMap | Counter | Deque | Dict | DefaultDict | List | OrderedDict
+    | Set | FrozenSet | NamedTuple | TypedDict | Generator
+    # Other concrete types.
+    | BinaryIO | IO | Match | Pattern | TextIO
+    # One-off things.
+    | AnyStr | LiteralString | Never | NewType | NoReturn | NotRequired
+    | ParamSpecArgs | ParamSpecKwargs | Required | Self | Text | TypeAlias
+    | TypeGuard | Unpack
+    )\b
+
+  magic_functions: |-
+    (?x: __(?:
+    # unary operators
+    invert | neg | pos | abs
+    # binary operators
+    | add | and | contains | div | divmod | floordiv | lshift | mod | mul | or
+    | pow | rshift | sub | truediv | xor
+    # right-hand binary operators
+    | radd | rand | rdiv | rdivmod | rfloordiv | rlshift | rmod | rmul | ror
+    | rpow | rrshift | rsub | rtruediv | rxor
+    # in-place operator assignments
+    | iadd | iand | idiv | ifloordiv | ilshift | imod | imul | ior | ipow
+    | irshift | isub | itruediv | ixor
+    # comparisons
+    | eq | ge | gt | le | lt | ne
+    | cmp | rcmp  # py2
+    # primary coercion
+    | bool | str
+    | nonzero | unicode  # py2
+    # number coercion (converts something to a number)
+    | bytes | complex | float | index | int | round
+    | long  # py2
+    # other "coercion"
+    | format | len | length_hint | hash | repr | reversed
+    | coerce | hex | oct  # py2
+    | fspath
+    # iterator (and 'await')
+    | iter | next
+    | aiter | anext
+    | await
+    # attribute and item access
+    | delattr | delitem | delslice
+    | getattr | getattribute | getitem | getslice
+    | setattr | setitem | setslice
+    | dir | missing
+    # context manager
+    | enter | exit
+    | aenter | aexit
+    # other class magic
+    | call | del | init | new | init_subclass
+    | instancecheck | subclasscheck
+    # pickling
+    | getnewargs | getnewargs_ex | getstate | setstate | reduce | reduce_ex
+    # descriptors
+    | delete | get | set | set_name
+    # class-specific
+    | subclasses
+    # dataclasses (PEP 557)
+    | post_init
+    # for typing core support (PEP 560)
+    | class_getitem | mro_entries
+    )__\b )
+
+  magic_variables: |-
+    (?x: __(?:
+    # generic object
+    class | dict | doc | module | name
+    # module-specific / global
+    | all | file | package
+    # functions & methods
+    | annotations | closure | code | defaults | func | globals | kwdefaults | self | qualname
+    # classes (attributes)
+    | bases | prepare | slots | metaclass | mro
+    # Python 2
+    | members | methods
+    # Python 3.12 (PEP 698)
+    | override
+    )__\b )
+
+##############################################################################
 
 contexts:
-  prototype:
-    - include: comments
-    - include: line-continuation
-
   main:
+    - meta_include_prototype: false
+    - match: ''
+      push: [statements, shebang]
+
+  statements:
     - include: docstrings
-    - include: expressions
-    - include: assignments
+    - include: line-statements
+    - include: block-statements
+    - include: class-definitions
+    - include: function-definitions
+    - include: type-definitions
+    - include: statement-terminators
+    - include: expression-as-a-statement
 
-  docstrings:
-    - match: ^\s*(""")
-      captures:
-        1: punctuation.definition.comment.begin.gdscript
-      push:
-        - meta_scope: comment.block.documentation.gdscript
-        - meta_include_prototype: false
-        - include: character-escapes
-        - match: \"""
-          scope: punctuation.definition.comment.end.gdscript
-          pop: true
+  block-statements:
+    - include: case-statements
+    - include: conditional-statements
+    - include: exception-statements
+    - include: for-statements
+    - include: match-statements
+    - include: while-statements
+    - include: with-statements
 
-  literals:
+  line-statements:
+    - include: decorators
+    - include: assignment-statements
+    - include: import-statements
+    - include: modifier-statements
+    - include: flow-statements
+    - include: other-statements
+
+  # Always include these last and only one at a time!
+  expression-as-a-statement:
+    - include: line-continuations
+    - include: illegal-assignment-expressions
+    - include: lambdas
+    - include: expressions-common
+    - include: qualified-name
+
+  expression-in-a-statement:
+    # Differs from expression-as-a-statement in that:
+    # - invalid-name matches will pop the current context
+    # - assignment expressions
+    - include: assignment-expressions
+    - include: lambdas
+    - include: expressions-common
+    - include: illegal-name
+    - include: qualified-name
+
+  expression-in-a-group:  # Always include this last!
+    # Differs from expression-in-a-statement in that:
+    # - no assignment expressions allowed
+    # - accessor and lambda matching continues into the next line
+    - include: line-continuations
+    - include: illegal-assignment-expressions
+    - include: lambda-in-groups
+    - include: expressions-common
+    - include: illegal-name
+    - include: qualified-name
+
+  expression-in-a-sequence:  # Always include this last!
+    # Differs from expression-in-a-statement in that:
+    # - accessor and lambda matching continues into the next line
+    - include: for-expressions
+    - include: line-continuations
+    - include: assignment-expressions
+    - include: lambda-in-groups
+    - include: expressions-common
+    - include: illegal-name
+    - include: qualified-name
+
+  expressions-common:
+    - include: dictionaries-and-sets
+    - include: generators-groups-and-tuples
+    - include: lists
+    - include: comments
+    - include: constants
+    - include: numbers
     - include: strings
-    - match: '@"'
-      push:
-        # Should probably be combined with the strings context
-        - meta_scope: string.quoted.double.node-path.gdscript
-        - match: (?<!\\)"
-          pop: true
-    - match: \b(?i:0x\h*)\b
-      scope: constant.numeric.integer.hexadecimal.gdscript
-    - match: '\b(?i:(\d+\.\d*(e[\-\+]?\d+)?))\b'
-      scope: constant.numeric.float.gdscript
-    - match: '\b(?i:(\.\d+(e[\-\+]?\d+)?))\b'
-      scope: constant.numeric.float.gdscript
-    - match: '\b(?i:(\d+e[\-\+]?\d+))\b'
-      scope: constant.numeric.float.gdscript
-    - match: \b\d+\b
-      scope: constant.numeric.integer.gdscript
-
-  expressions:
-    - include: literals
-    - include: builtin-types
-    - include: dictionaries
-    - match: \b(?i:elif|else|for|if|while|break|continue|pass|return|match)\b
-      scope: keyword.control.flow.gdscript
-    - match: \b(?i:&&|and|in|is|!|not|\|\||or)\b
-      scope: keyword.operator.logical.gdscript
-    - match: <=|>=|==|<|>|!=
-      scope: keyword.operator.comparison.gdscript
-    - match: \+=|-=|\*=|/=|%=|&=|\|=|\*|/|%|\+|-|<<|>>|&|\||\^|~
-      scope: keyword.operator.arithmetic.gdscript
-    - include: yields
+    - include: keywords
+    - include: operators
     - include: function-calls
+    - include: items
+    - include: illegal-stray-brackets
+    - include: illegal-stray-braces
+    - include: illegal-stray-parens
 
-  assignments:
-    - match: "="
-      scope: keyword.operator.assignment.gdscript
-
-    - match: '^\s*(?i:(class))\s+({{identifier}})\s*'
-      captures:
-        1: storage.type.class.gdscript
-        2: entity.name.type.class.gdscript
-
-    - include: functions
-    - include: signals
-
-    - match: '(?i:\b(?:(onready)\s+)?(var))\s+({{identifier}})'
-      captures:
-        1: keyword.other.onready.gdscript
-        2: storage.type.var.gdscript
-        3: variable.other.gdscript
-    - match: '\b(?i:(const))\s+({{identifier}})'
-      captures:
-        1: storage.type.const.gdscript
-        2: variable.other.gdscript
-    - match: '\b(?i:(enum))\s+({{identifier}})?'
-      captures:
-        1: storage.type.enum.gdscript
-        2: entity.name.type.gdscript
-    - match: \b(?i:extends|assert|breakpoint)\b
-      scope: keyword.other.gdscript
-    - match: '(?<=extends)\s+{{identifier}}(\.({{identifier}}))?'
-      scope: entity.other.inherited-class.gdscript
-    - match: \b(?i:true|false|null)\b
-      scope: constant.language.gdscript
-    - match: \b(?i:export|tool)\b
-      scope: storage.modifier.static.gdscript
-    - match: \b(setget)\b\s*({{identifier}})?\s*(,)?\s*({{identifier}})?
-      captures:
-        1: keyword.operator.setget.gdscript
-        2: variable.function.setter.gdscript
-        3: punctuation.separator.parameters.gdscript
-        4: variable.function.getter.gdscript
+###[ COMMENTS ]###############################################################
 
   comments:
-    - match: (#).*
-      scope: comment.line.number-sign.gdscript
+    # Special Sphinx comment syntax to denote documentation
+    # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#directive-autoattribute
+    - match: '#:'
+      scope: punctuation.definition.comment.gdscript
+      push: comment-sphinxdoc-body
+    - match: \#
+      scope: punctuation.definition.comment.gdscript
+      push:
+        - comment-body
+        - type-hint
+
+  comment-body:
+    - meta_scope: comment.line.number-sign.gdscript
+    - match: \n
+      pop: 1
+
+  comment-sphinxdoc-body:
+    - meta_scope: comment.line.documentation.gdscript
+    - match: \n
+      pop: 1
+
+  shebang:
+    - meta_include_prototype: false
+    - match: ^\#!
+      scope: punctuation.definition.comment.gdscript
+      set: shebang-body
+    - match: ^|(?=\S)  # Note: Ensure to highlight shebang if Python is embedded.
+      pop: 1
+
+  shebang-body:
+    - meta_include_prototype: false
+    - meta_scope: comment.line.shebang.gdscript
+    # Note: Keep sync with first_line_match!
+    - match: python(?:\d(?:\.\d+)?)?\b
+      scope: constant.language.shebang.gdscript
+    - match: \n
+      pop: 1
+
+###[ TYPE HINTS ]#############################################################
+
+  type-hint:
+    # 1st type hint may be of any type
+    - match: (type)(:)
       captures:
-        1: punctuation.definition.comment.number-sign.gdscript
+        1: keyword.other.type.gdscript
+        2: punctuation.separator.type.gdscript
+      set: type-hint-any
+    - include: else-pop
+    - include: eol-pop
 
-  strings:
-    - match: \"""
-      scope: punctuation.definition.string.begin.gdscript
-      push:
-        - meta_scope: meta.string.gdscript string.quoted.double.block.gdscript
-        - meta_include_prototype: false
-        - include: character-escapes
-        - match: \"""
-          scope: punctuation.definition.string.end.gdscript
-          pop: true
-    # GDScript has double-quoted multiline strings but not single-quoted
-    - match: \"
-      scope: punctuation.definition.string.begin.gdscript
-      push:
-        - meta_scope: meta.string.gdscript string.quoted.double.gdscript
-        - meta_include_prototype: false
-        - include: character-escapes
-        - match: \"
-          scope: punctuation.definition.string.end.gdscript
-          pop: true
-    - match: \'
-      scope: punctuation.definition.string.begin.gdscript
-      push:
-        - meta_scope: meta.string.gdscript string.quoted.single.gdscript
-        - meta_include_prototype: false
-        - include: character-escapes
-        - match: \'
-          scope: punctuation.definition.string.end.gdscript
-          pop: true
-  character-escapes:
-    # Should add the rest of the character escapes here
-    - match: \\["'\\]
-      scope: constant.character.escape.gdscript
-
-  builtin-types:
-    # It's debateable whether these "built-in types" should be categorized as ``storage`` or
-    # ``support``. I chose storage because the default color scheme differentiates it from
-    # support and that's useful because things descended from Object get instantiated by
-    # calling ``new()``, but these don't
-    #
-    # https://docs.godotengine.org/en/3.1/getting_started/scripting/gdscript/gdscript_basics.html#built-in-types
-    - match: \b(?:bool|int|float|String|funcref)\b
-      scope: storage.type.basic.gdscript
-    - match: '\b(?:Vector[23]|Rect2|Matrix32?|Plane|Quat|AABB|Transform)\b'
-      scope: storage.type.vector.gdscript
-    - match: \b(?:Color|Image|NodePath|RID|Object|InputEvent)\b
-      scope: storage.type.engine.gdscript
-    - match: '\b(Array|Dictionary|ByteArray|IntArray|FloatArray|StringArray|Vector[23]Array|ColorArray)\b'
-      scope: storage.type.container.gdscript
-
-  functions:
-    - match: ^\s*(?:(static|remote|sync|master|slave)\s+)?(func)\b
-      captures:
-        1: storage.modifier.gdscript
-        2: storage.type.function.gdscript
-      push:
-        - meta_scope: meta.function.gdscript
-        - match: '{{identifier}}'
-          scope: entity.name.function.gdscript
-        - match: (?=\()
-          set:
-            - meta_scope: meta.function.parameters.gdscript
-            - match: \(
-              scope: punctuation.section.parameters.begin.gdscript
-            - match: '{{identifier}}'
-              scope: variable.parameter.gdscript
-            - match: ','
-              scope: punctuation.separator.parameters.gdscript
-            - match: \)
-              scope: punctuation.section.parameters.end.gdscript
-              set:
-                - meta_scope: meta.function.gdscript
-                - include: start-func-body
-                - match: ->
-                  scope: keyword.operator.arrow.forward.gdscript
-                  set: 
-                    - meta_scope: meta.function.return-type
-                    - include: start-func-body
-                    - include: builtin-types
-                    - match: \bvoid\b
-                      scope: storage.type.basic.gdscript
-                    - match: '{{identifier}}'
-                      scope: support.class.gdscript
-  start-func-body:
-    - match: ':'
-      scope: punctuation.section.function.begin.gdscript
-      pop: true
-
-  signals:
-    - match: ^\s*signal\b
-      scope: storage.type.signal.gdscript
-      push:
-        - meta_scope: meta.signal.gdscript
-        - match: '{{identifier}}'
-          scope: entity.name.signal.gdscript
-        - match: $
-          pop: true
-        - match: (?=\()
-          set:
-            - meta_scope: meta.signal.parameters.gdscript
-            - match: \(
-              scope: punctuation.section.parameters.begin.gdscript
-            - match: '{{identifier}}'
-              scope: variable.parameter.gdscript
-            - match: ','
-              scope: punctuation.separator.parameters.gdscript
-            - match: \)
-              scope: punctuation.section.parameters.end.gdscript
-              pop: true
-
-  dictionaries:
-    - match: '{'
-      scope: punctuation.section.mapping.begin.gdscript
-      set: dictionary-keys
-  dictionary-keys:
-    # Scope meta.mapping.gdscript appears twice immediately before delimiter, why?
-    - meta_scope: meta.mapping.gdscript
-    - include: dictionary-close-pop
-    - match: '[:=]'
-      scope: punctuation.separator.mapping.key-value.gdscript
-      set: dictionary-values  # prevent infinite loop
-    - match: ','  # enum key without an explicit value
-      scope: punctuation.separator.mapping.key-value.gdscript      
+  type-hint-any:
+    - meta_scope: meta.type.gdscript
+    - include: type-hint-end
+    - match: ignore\b
+      scope: keyword.other.ignore.gdscript
+      set:
+        - type-hint-type
+        - type-hint-error-list
     - match: (?=\S)
       set:
-        - meta_scope: meta.mapping.key.gdscript
-        - match: '{{identifier}}(?=\s*=)'
-          set: dictionary-keys
-        - match: '{{identifier}}(?=\s*[,}\n])'
-          # Would be better not to nest enum matching under dictionary since this
-          # won't correctly scope `enum {X=1}`, for example.
-          scope: entity.name.enum.gdscript
-          set: dictionary-keys
-        - match: (?=\s*[:=])
-          set: dictionary-keys
-        - include: expressions
-  dictionary-values:
-    - meta_scope: meta.mapping.gdscript
-    - include: dictionary-close-pop
+        - type-hint-ignore
+        - type-hint-begin
+
+  type-hint-ignore:
+    # 2nd type hint may only be a `type: ignore`
+    # As it isn't a real start of a comment `#` is not scoped punctuation.
+    - match: \s*\#\s*((type)(:)\s*(ignore\b))
+      captures:
+        1: meta.type.gdscript
+        2: keyword.other.type.gdscript
+        3: punctuation.separator.type.gdscript
+        4: keyword.other.ignore.gdscript
+      set: type-hint-error-list
+    - include: immediately-pop
+
+  type-hint-type:
+    # 2nd type hint must not be a `type: ignore`
+    # As it isn't a real start of a comment `#` is not scoped punctuation.
+    - match: \s*\#\s*((type)(:)(?!\s*ignore\b))
+      captures:
+        1: meta.type.gdscript
+        2: keyword.other.type.gdscript
+        3: punctuation.separator.type.gdscript
+      set: type-hint-begin
+    - include: immediately-pop
+
+  type-hint-error-list:
+    - meta_content_scope: meta.type.gdscript
+    - match: \[
+      scope: punctuation.section.sequence.begin.gdscript
+      set: type-hint-error-list-body
+    - include: type-hint-end
+
+  type-hint-error-list-body:
+    - meta_scope: meta.type.gdscript meta.sequence.list.errors.gdscript
+    - match: \]
+      scope: punctuation.section.sequence.end.gdscript
+      pop: 1
+    - include: type-hint-end
+    - include: sequence-separators
+    - match: \b[[:alpha:]_-][[:alnum:]_-]+\b
+      scope: constant.other.error-code.gdscript
+
+  type-hint-begin:
+    - meta_content_scope: meta.type.gdscript
+    - match: \(
+      scope: punctuation.section.parameters.begin.gdscript
+      set: type-hint-function-parameter-list-body
+    - match: (?=\S)
+      set: type-hint-body
+
+  type-hint-function-parameter-list-body:
+    - meta_scope: meta.type.function.parameters.gdscript
+    - match: \)
+      scope: punctuation.section.parameters.end.gdscript
+      set: type-hint-function-return-type
+    - include: type-hint-body
+
+  type-hint-function-return-type:
+    - meta_content_scope: meta.type.function.gdscript
+    - match: ->
+      scope: punctuation.separator.return-type.gdscript
+      set: type-hint-function-return-type-body
+    - include: type-hint-end
+
+  type-hint-function-return-type-body:
+    - meta_scope: meta.type.function.return-type.gdscript
+    - include: type-hint-body
+
+  type-hint-body:
+    - meta_scope: meta.type.gdscript
+    - include: type-hint-end
+    - include: type-hint-expressions
+
+  type-hint-end:
+    - match: (?=\s*[\n#])
+      pop: 1
+
+  type-hint-expressions:
+    - include: type-hint-lists
+    - include: type-separators
+    - include: type-constants
+    - include: constants
+    - include: double-quoted-strings
+    - include: single-quoted-strings
+    - include: builtin-types
+    - include: qualified-name
+
+  type-hint-lists:
+    - match: \[
+      scope: punctuation.section.brackets.begin.gdscript
+      push: type-hint-list-body
+
+  type-hint-list-body:
+    # As annotations contain normal expressions use a generic `meta.brackets`
+    # for sake of consistent scoping/highlighting.
+    - meta_scope: meta.brackets.gdscript
+    - match: \]
+      scope: punctuation.section.brackets.end.gdscript
+      pop: 1
+    - include: type-hint-body
+
+  type-constants:
+    # Note: Enables `None = None` in type hints.
+    - match: None\b
+      scope: constant.language.null.gdscript
+
+  type-separators:
+    # Note: Scoped as normal arithmetic operator for consistency reasons with
+    #       type-hints in annotations, which share syntax with normal expressions
+    - match: \|
+      scope: keyword.operator.arithmetic.gdscript
+    - include: sequence-separators
+
+###[ DECORATORS ]#############################################################
+
+  decorators:
+    - match: ^\s*(@)
+      captures:
+        1: meta.annotation.gdscript punctuation.definition.annotation.gdscript
+      push: decorator-body
+
+  decorator-body:
+    - meta_content_scope: meta.annotation.gdscript
+    - include: line-continuation-or-pop
+    - include: assignment-expressions
+    - include: lambdas
+    - include: dictionaries-and-sets
+    - include: generators-groups-and-tuples
+    - include: lists
+    - include: constants
+    - include: numbers
+    - include: strings
+    - include: keywords
+    - include: operators
+    - include: decorator-function-calls
+    - include: decorator-variables
+    - include: illegal-stray-brackets
+    - include: illegal-stray-braces
+    - include: illegal-stray-parens
+
+  decorator-function-calls:
+    - match: (?=(?:\.\s*)?{{path}}\s*\() # now we do
+      push:
+        - function-call-argument-list
+        - decorator-function-call-name
+        - qualified-name-until-leaf
+
+  decorator-function-call-name:
+    - meta_content_scope: meta.function-call.identifier.gdscript
+    - match: (\.)\s*
+      captures:
+        1: punctuation.accessor.dot.gdscript
+      set: qualified-decorator-function-call-name
+    - match: ''
+      set: unqualified-decorator-function-call-name
+
+  qualified-decorator-function-call-name:
+    - meta_scope: meta.function-call.identifier.gdscript meta.path.gdscript
+    - include: unqualified-decorator-variable-name
+
+  unqualified-decorator-function-call-name:
+    - meta_scope: meta.function-call.identifier.gdscript
+    - include: unqualified-decorator-variable-name
+
+  decorator-variables:
+    - match: (?=(?:\.\s*)?{{identifier}})
+      push:
+        - after-expression
+        - decorator-variable-name
+        - qualified-name-until-leaf
+
+  decorator-variable-name:
+    - match: (\.)\s*
+      captures:
+        1: punctuation.accessor.dot.gdscript
+      set: qualified-decorator-variable-name
+    - match: ''
+      set: unqualified-decorator-variable-name
+
+  qualified-decorator-variable-name:
+    - meta_scope: meta.path.gdscript
+    - include: unqualified-decorator-variable-name
+
+  unqualified-decorator-variable-name:
+    - include: illegal-name
+    - match: '{{identifier}}'
+      scope: variable.annotation.gdscript
+      pop: 1
+    - include: immediately-pop
+
+###[ IMPORT STATEMENTS ]######################################################
+
+  import-statements:
+    - match: import\b
+      scope: keyword.control.import.gdscript
+      push:
+        - imports-import-body
+        - expect-absolute-import
+    - match: from\b
+      scope: keyword.control.import.from.gdscript
+      push:
+        - imports-from-body
+        - maybe-relative-import
+
+  imports-import-body:
+    - meta_scope: meta.statement.import.gdscript
+    - include: line-continuation-or-pop
     - match: ','
-      scope: punctuation.separator.mapping.gdscript
-      set: dictionary-keys  # prevent infinite loop
-    - match: (?=\S)
-      set:
-        - meta_scope: meta.mapping.value.gdscript
-        - include: dictionary-close-pop
-        - match: (?=\s*,)
-          set: dictionary-values
-        - include: expressions
-  dictionary-close-pop:
-    - match: '\s*(})'
-      captures:
-        1: punctuation.section.mapping.end.gdscript
-      pop: true
+      scope: punctuation.separator.import-list.gdscript
+      push: expect-absolute-import
+    - include: imports-as
+    - include: qualified-name
+    - include: import-illegal-names
 
-  function-calls:
-    - match: '{{identifier}}\s*(?=\()'
-      scope: meta.function-call.gdscript variable.function.gdscript
+  imports-from-body:
+    - meta_scope: meta.statement.import.gdscript
+    - meta_content_scope: meta.import-source.gdscript
+    - include: imports-from-import
+    - match: as\b
+      scope: keyword.control.import.as.gdscript
+      set: imports-from-import-names
+    - match: '{{illegal_names}}\b'
+      scope: meta.import-path.gdscript invalid.illegal.name.gdscript
+    - match: '{{identifier}}'
+      scope: meta.import-path.gdscript meta.import-name.gdscript
+    - match: \s*(\.)\s*(?={{identifier}}|$)
+      scope: meta.import-path.gdscript
+      captures:
+        1: punctuation.accessor.dot.gdscript
+    - match: \s*(\.\s*\S+) # matches and consumes the remainder of "abc.123" or "abc.+"
+      scope: meta.import-path.gdscript
+      captures:
+        1: invalid.illegal.name.gdscript
+    - include: line-continuation-or-pop
+    - include: else-pop
+
+  imports-from-import:
+    - meta_include_prototype: false
+    - match: import\b
+      scope: keyword.control.import.gdscript
+      set: imports-from-import-body
+
+  imports-from-import-body:
+    - meta_scope: meta.statement.import.gdscript
+    - include: line-continuation-or-pop
+    - match: \*
+      scope: constant.other.wildcard.asterisk.gdscript
+      set: expect-import-end
     - match: (?=\()
+      set: imports-from-import-list
+    - match: (?=\S)
+      set: imports-from-import-names
+
+  imports-from-import-list:
+    - meta_include_prototype: false
+    - match: \(
+      scope: punctuation.section.import-list.begin.gdscript
+      set: imports-from-import-list-body
+
+  imports-from-import-list-body:
+    - meta_scope: meta.statement.import.gdscript meta.import-list.gdscript
+    - match: \)
+      scope: punctuation.section.import-list.end.gdscript
+      pop: 1
+    - include: comments
+    - include: imports-as-inlist
+    - include: import-names
+    - include: import-illegal-names-inlist
+
+  imports-as-inlist:
+    - match: as\b
+      scope: keyword.control.import.as.gdscript
+      push: imports-as-inlist-body
+
+  imports-as-inlist-body:
+    - match: (?={{identifier}})
+      set: name-content
+    - include: import-illegal-names-inlist
+    - include: else-pop
+
+  import-illegal-names-inlist:
+    - match: '[^\s,)]+'
+      scope: invalid.illegal.name.import.gdscript
+
+  imports-from-import-names:
+    - meta_scope: meta.statement.import.gdscript
+    - include: line-continuation-or-pop
+    - include: imports-as
+    - include: import-names
+    - include: import-illegal-names
+
+  imports-as:
+    - match: as\b
+      scope: keyword.control.import.as.gdscript
+      push: imports-as-body
+
+  imports-as-body:
+    - include: line-continuation-or-pop
+    - match: (?={{identifier}})
+      set: name-content
+    - include: import-illegal-names
+    - include: else-pop
+
+  import-illegal-names:
+    - match: '[^\s,]+'
+      scope: invalid.illegal.name.import.gdscript
+
+  import-names:
+    - match: ','
+      scope: punctuation.separator.import-list.gdscript
+    - include: name
+
+  expect-import-end:
+    - match: $
+      pop: 1
+    - match: (?=#)
+      pop: 1
+    - match: '[^\s#]+'
+      scope: invalid.illegal.unexpected-import.gdscript
+
+  expect-absolute-import:
+    - include: line-continuation-or-pop
+    - match: \.+
+      scope: invalid.illegal.unexpected-relative-import.gdscript
+    - include: else-pop
+
+  maybe-relative-import:
+    - include: line-continuation-or-pop
+    - match: \.+
+      scope: meta.import-path.gdscript keyword.control.import.relative.gdscript
+    - include: else-pop
+
+###[ CLASS DEFINITIONS ]######################################################
+
+  class-definitions:
+    - match: ^\s*(class)\b
+      scope: meta.class.gdscript
+      captures:
+        1: keyword.declaration.class.gdscript
       push:
-        - meta_scope: meta.function-call.arguments.gdscript
-        - include: arguments-list
-  yields:
-    - match: \byield\b
-      scope: keyword.control.flow.yield.gdscript
+        - class-definition-base-list
+        - type-parameter-list
+        - class-definition-name
+
+  class-definition-name:
+    - include: illegal-name
+    - match: '{{identifier}}'
+      scope: entity.name.class.gdscript
+      pop: 1
+    - include: class-definition-end
+
+  class-definition-base-list:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.class.gdscript
+    - match: \(
+      scope: punctuation.section.inheritance.begin.gdscript
+      set: class-definition-base-list-body
+    - include: class-definition-end
+
+  class-definition-base-list-body:
+    - meta_scope: meta.class.inheritance.gdscript
+    - match: \)
+      scope: punctuation.section.inheritance.end.gdscript
+      set: class-definition-end
+    - match: '{{colon}}'
+      scope: invalid.illegal.no-closing-parens.gdscript
+      pop: 1
+    - match: ','
+      scope: punctuation.separator.inheritance.gdscript
+    - include: illegal-name
+    - include: constants
+    - match: ({{identifier}})\s*({{assignment_operator}})
+      captures:
+        1: variable.parameter.class-inheritance.gdscript
+        2: keyword.operator.assignment.gdscript
+    - match: (?={{identifier}}\s*\.)
+      push: qualified-base-class-name
+    - match: '{{identifier}}'
+      scope: entity.other.inherited-class.gdscript
+    - include: expression-in-a-group
+
+  qualified-base-class-name:
+    - meta_scope: meta.path.gdscript
+    - match: '({{identifier}})\s*(\.)\s*'
+      captures:
+        1: variable.namespace.gdscript
+        2: punctuation.accessor.dot.gdscript
+    - match: '{{identifier}}'
+      scope: entity.other.inherited-class.gdscript
+      pop: 1
+    - include: immediately-pop
+
+  class-definition-end:
+    - meta_content_scope: meta.class.gdscript
+    - match: '{{colon}}'
+      scope: meta.class.gdscript punctuation.section.class.begin.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+
+###[ FUNCTION DEFINITIONS ]###################################################
+
+  function-definitions:
+    - match: ^\s*(?:(async)\s+)?(def)\b
+      scope: meta.function.gdscript
+      captures:
+        1: keyword.declaration.async.gdscript
+        2: keyword.declaration.function.gdscript
       push:
-        - match: (?=\()
-          push:
-            # Not sure if there's an appropriate meta scope for yield args, so
-            # giving them none for now
-            - include: arguments-list
-        - match: ''
-          pop: true
-  arguments-list:
+        - function-parameter-list
+        - type-parameter-list
+        - function-definition-name
+
+  function-definition-name:
+    - include: illegal-name
+    - match: '{{magic_functions}}'
+      scope: entity.name.function.gdscript support.function.magic.gdscript
+      pop: 1
+    - match: '{{identifier}}'
+      scope: entity.name.function.gdscript
+      pop: 1
+    - include: function-definition-end
+
+  function-parameter-list:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.function.gdscript
+    - match: \(
+      scope: meta.function.parameters.gdscript punctuation.section.parameters.begin.gdscript
+      set:
+        - function-parameter-list-body
+        - function-parameter-allow-unpack-operators
+    - include: function-definition-end
+
+  function-parameter-list-body:
+    - meta_content_scope: meta.function.parameters.gdscript
+    - match: \)
+      scope: meta.function.parameters.gdscript punctuation.section.parameters.end.gdscript
+      set: function-after-parameters
+    - match: ','
+      scope: punctuation.separator.parameters.gdscript
+      push: function-parameter-allow-unpack-operators
+    - match: /
+      scope: storage.modifier.positional-args-only.gdscript
+      push: function-parameter-expect-comma
+    - match: '{{assignment_operator}}'
+      scope: keyword.operator.assignment.gdscript
+      set: function-parameter-default-value
+    - match: '{{colon}}'
+      scope: punctuation.separator.annotation.gdscript
+      set: function-parameter-annotation
+    - include: comments
+    - include: function-parameter-tuples
+    - include: parameter-names
+    - include: line-continuations
+    - include: illegal-assignment-expressions
+
+  function-parameter-allow-unpack-operators:
+    - match: (?=\*(?!\*))
+      branch_point: unpack-or-separator
+      branch:
+        - function-parameter-unpack-operator
+        - function-parameter-named-only-operator
+    - include: allow-unpack-operators
+
+  function-parameter-named-only-operator:
+    - meta_include_prototype: false
+    - match: \*
+      scope: storage.modifier.named-args-only.gdscript
+      pop: 2
+
+  function-parameter-unpack-operator:
+    - meta_include_prototype: false
+    - match: \*
+      scope: keyword.operator.unpacking.sequence.gdscript
+      set: function-parameter-unpack-operator-check
+
+  function-parameter-unpack-operator-check:
+    - meta_include_prototype: false
+    - include: comments
+    - match: (?=,)
+      fail: unpack-or-separator
+    - match: ^(?!\s*([#,]|$))|(?=\S)
+      pop: 2
+
+  function-parameter-expect-comma:
+    - meta_include_prototype: false
+    - include: comments
+    - match: (?=[,)])
+      pop: 1
+    - match: '[^\s,)]+'
+      scope: invalid.illegal.expected-comma.gdscript
+
+  function-parameter-annotation:
+    - meta_include_prototype: false
+    - meta_scope: meta.function.parameters.annotation.gdscript
+    - include: line-continuations
+    - match: (?=\S)
+      set: function-parameter-annotation-body
+
+  function-parameter-annotation-body:
+    - meta_scope: meta.function.parameters.annotation.gdscript
+    - meta_content_scope: meta.type.gdscript
+    - match: \s*(?=[,)=])
+      set: function-parameter-list-body
+    # Scope newline `meta.type` only, if type continues on next line.
+    # Note: This is required to workaround ST's line blindness.
+    - match: (?=\s*\n)
+      branch_point: function-parameter-annotation-end
+      branch:
+        - function-parameter-annotation-continue
+        - function-parameter-annotation-end
+    - include: function-parameter-annotation-content
+
+  function-parameter-annotation-content:
+    # Note: maybe type-hint expressions
+    - include: type-constants
+    - include: expression-in-a-group
+
+  function-parameter-annotation-continue:
+    - meta_include_prototype: false
+    - match: \s*(?=[,)=])
+      fail: function-parameter-annotation-end
+    - include: comments
+    - include: else-pop
+
+  function-parameter-annotation-end:
+    - meta_include_prototype: false
+    - match: ''
+      pop: 2
+      push: function-parameter-list-body
+
+  function-parameter-default-value:
+    - meta_scope: meta.function.parameters.default-value.gdscript
+    - match: (?=[,)=])
+      set: function-parameter-list-body
+    - include: expression-in-a-group
+
+  function-parameter-tuples:
+    # python 2 style tuple arguments
+    # removed from python 3 since PEP-3113
+    - match: \(
+      scope: punctuation.section.group.begin.gdscript
+      push:
+        - function-parameter-tuple-body
+        - allow-unpack-operators
+
+  function-parameter-tuple-body:
+    - meta_scope: meta.group.gdscript
+    - match: \)
+      scope: punctuation.section.group.end.gdscript
+      set: after-expression
+    - match: ','
+      scope: punctuation.separator.parameters.gdscript
+      push: allow-unpack-operators
+    # default values should follow the argument
+    - match: '{{assignment_operator}}'
+      push: function-parameter-illegal-annotation
+    # python 2 does not support type annotations
+    - match: '{{colon}}'
+      push: function-parameter-illegal-default-value
+    - include: comments
+    - include: parameter-names
+    - include: line-continuations
+    - include: illegal-assignment-expressions
+
+  function-parameter-illegal-annotation:
+    - meta_include_prototype: false
+    - meta_scope: invalid.illegal.default-value.gdscript
+    - match: (?=[,)=])
+      pop: 1
+
+  function-parameter-illegal-default-value:
+    - meta_include_prototype: false
+    - meta_scope: invalid.illegal.annotation.gdscript
+    - match: (?=[,)=])
+      pop: 1
+
+  function-after-parameters:
+    - meta_content_scope: meta.function.gdscript
+    - match: ->
+      scope: punctuation.separator.return-type.gdscript
+      set: function-return-type
+    - include: function-definition-end
+
+  function-return-type:
+    - meta_include_prototype: false
+    - meta_scope: meta.function.return-type.gdscript
+    - include: line-continuation-or-pop
+    - match: (?=\S)
+      set: function-return-type-body
+
+  function-return-type-body:
+    - meta_content_scope: meta.function.return-type.gdscript meta.type.gdscript
+    - match: (\s*)({{colon}})
+      captures:
+        1: meta.function.return-type.gdscript
+        2: meta.function.gdscript punctuation.section.function.begin.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: function-return-type-content
+
+  function-return-type-content:
+    # Note: maybe type-hint expressions
+    - include: illegal-assignment-expressions
+    - include: type-constants
+    - include: expression-in-a-statement
+
+  function-definition-end:
+    - match: '{{colon}}'
+      scope: meta.function.gdscript punctuation.section.function.begin.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: illegal-assignment-expressions
+
+###[ TYPE DEFINITIONS ]#######################################################
+
+  type-definitions:
+    - match: ^(?=\s*type\b)
+      branch_point: type-definitions
+      branch:
+        - type-definition
+        - type-definition-fallback
+
+  type-definition:
+    - meta_include_prototype: false
+    - match: \s*(type)\b
+      captures:
+        1: keyword.declaration.class.gdscript
+      set:
+        - type-definition-meta
+        - type-definition-value-assignment
+        - type-parameter-list
+        - type-definition-name
+
+  type-definition-meta:
+    - meta_include_prototype: false
+    - meta_scope: meta.type-alias.gdscript
+    - include: immediately-pop
+
+  type-definition-name:
+    - include: illegal-name
+    - match: '{{identifier}}'
+      scope: entity.name.type.alias.gdscript
+      pop: 1
+    - include: line-continuations
+    - match: (?=\S)
+      fail: type-definitions
+
+  type-definition-value-assignment:
+    - match: =
+      scope: keyword.operator.assignment.gdscript
+      set: variable-annotation
+    - include: line-continuation-or-pop
+
+  type-definition-fallback:
+    # Fallback context, used, if `type` doesn't seem to start a type alias
+    - match: (?={{path}}\s*\()
+      set:
+        - function-call-argument-list
+        - function-call-wrapper
+        - qualified-name-until-leaf
+    - include: generic-name
+
+###[ TYPE PARAMETERS ]########################################################
+
+  type-parameter-lists:
+    - match: \[
+      scope: meta.generic.gdscript punctuation.definition.generic.begin.gdscript
+      push:
+        - type-parameter-list-body
+        - allow-unpack-operators
+
+  type-parameter-list:
+    - match: \[
+      scope: meta.generic.gdscript punctuation.definition.generic.begin.gdscript
+      set:
+        - type-parameter-list-body
+        - allow-unpack-operators
+    - include: line-continuation-or-pop
+    - include: else-pop
+
+  type-parameter-list-body:
+    - meta_content_scope: meta.generic.gdscript
+    - match: \]
+      scope: meta.generic.gdscript punctuation.definition.generic.end.gdscript
+      pop: 1
+    - match: ','
+      scope: punctuation.separator.parameters.gdscript
+      push: allow-unpack-operators
+    - match: '{{colon}}'
+      scope: meta.generic.gdscript punctuation.separator.bound.gdscript
+      set: type-parameter-bound
+    - include: comments
+    - include: illegal-names
+    - match: '{{identifier}}'
+      scope: variable.parameter.type.gdscript
+    - include: line-continuations
+
+  type-parameter-bound:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.generic.bound.gdscript
+    - include: line-continuations
+    - match: (?=\S)
+      set: type-parameter-bound-body
+
+  type-parameter-bound-body:
+    - meta_scope: meta.generic.bound.gdscript
+    - meta_content_scope: meta.type.gdscript
+    - match: \s*(?=[],=])
+      set: type-parameter-list-body
+    # Scope newline `meta.type` only, if type continues on next line.
+    # Note: This is required to workaround ST's line blindness.
+    - match: (?=\s*\n)
+      branch_point: type-parameter-bound-end
+      branch:
+        - type-parameter-bound-continue
+        - type-parameter-bound-end
+    - include: type-parameter-bound-content
+
+  type-parameter-bound-content:
+    # Note: maybe type-hint expressions
+    - include: type-constants
+    - include: expression-in-a-group
+
+  type-parameter-bound-continue:
+    - meta_include_prototype: false
+    - match: \s*(?=[],=])
+      fail: type-parameter-bound-end
+    - include: comments
+    - include: else-pop
+
+  type-parameter-bound-end:
+    - meta_include_prototype: false
+    - match: ''
+      pop: 2
+      push: type-parameter-list-body
+
+###[ ASSIGNMENT STATEMENTS ]##################################################
+
+  assignment-statements:
+    - match: '{{colon}}'
+      scope: punctuation.separator.annotation.gdscript
+      push: variable-annotation
+    - match: '{{augmented_assignment_operators}}'
+      scope: keyword.operator.assignment.augmented.gdscript
+      push: assignment-statement-value
+    - match: '{{assignment_operator}}'
+      scope: keyword.operator.assignment.gdscript
+
+  assignment-statement-value:
+    - include: line-continuation-or-pop
+    - include: illegal-assignment-expressions
+    - include: expression-in-a-statement
+
+  variable-annotation:
+    - meta_include_prototype: false
+    - include: line-continuation-or-pop
+    - match: (?=\S)
+      set: variable-annotation-body
+
+  variable-annotation-body:
+    - meta_content_scope: meta.type.gdscript
+    - match: (?=\s*[\n#):;=\]}])
+      pop: 1
+    - include: line-continuations
+    - include: variable-annotation-content
+
+  variable-annotation-content:
+    # Note: maybe type-hint expressions
+    - include: type-constants
+    - include: expression-in-a-statement
+
+###[ CASE STATEMENTS ]########################################################
+
+  case-statements:
+    # https://www.gdscript.org/dev/peps/pep-0634
+    - match: (?=case\b)
+      branch_point: case-statements
+      branch:
+        - case-statement
+        - structural-pattern-fallback
+
+  case-statement:
+    - match: case
+      scope:
+        meta.statement.conditional.case.gdscript
+        keyword.control.conditional.case.gdscript
+      set:
+        - case-statement-pattern
+        - case-statement-begin
+
+  case-statement-begin:
+    # fail if match is directly followed by `:` or end of statement
+    - match: (?=$|#|;|:)
+      fail: case-statements
+    - include: allow-unpack-operators
+
+  case-statement-end:
+    - match: '{{colon}}'
+      scope:
+        meta.statement.conditional.case.gdscript
+        punctuation.section.block.conditional.case.gdscript
+      pop: 1
+
+  case-statement-fail:
+    - match: (?=$|#|;)
+      fail: case-statements
+
+  case-statement-guard:
+    - meta_content_scope: meta.statement.conditional.case.guard.gdscript
+    - include: case-statement-end
+    - include: case-statement-fail
+    - include: line-continuations
+    - include: expression-in-a-statement
+
+  case-statement-pattern:
+    - meta_content_scope: meta.statement.conditional.case.patterns.gdscript
+    - match: (?=if\b)
+      set: case-statement-guard
+    - include: case-statement-end
+    - include: case-statement-fail
+    - include: case-pattern-expressions
+
+  case-pattern-expressions:
+    - include: case-pattern-capture-targets
+    - include: case-pattern-classes
+    - include: case-pattern-dictionaries
+    - include: case-pattern-groups-or-tuples
+    - include: case-pattern-lists
+    - include: case-pattern-operators
+    - include: illegal-assignment-expressions
+    - include: sequence-separators
+    - include: comments
+    - include: booleans
+    - include: nones
+    - include: numbers
+    - include: strings
+    - include: illegal-names
+    - include: qualified-name
+    - include: illegal-stray-brackets
+    - include: illegal-stray-braces
+    - include: illegal-stray-parens
+    - include: line-continuations
+
+  case-pattern-capture-targets:
+    - match: as\b
+      scope: keyword.control.conditional.case.as.gdscript
+      push: case-pattern-capture-target
+
+  case-pattern-capture-target:
+    - include: wildcard-variable
+    - include: illegal-name
+    - include: generic-name
+    - include: else-pop
+
+  case-pattern-classes:
+    - match: (?=(\.\s*)?{{path}}\s*\()
+      push:
+        - case-pattern-class-arguments-begin
+        - case-pattern-class-wrapper
+        - qualified-name-until-leaf
+
+  case-pattern-class-wrapper:
+    - match: (\.)\s*
+      scope: meta.path.gdscript
+      captures:
+        1: punctuation.accessor.dot.gdscript
+      set: qualified-case-pattern-class-name
+    - match: ''
+      set: unqualified-case-pattern-class-name
+
+  qualified-case-pattern-class-name:
+    - meta_content_scope: meta.function-call.identifier.gdscript meta.path.gdscript
+    - include: builtin-types
+    - include: illegal-names
+    - include: class-names
+    - include: immediately-pop
+
+  unqualified-case-pattern-class-name:
+    - meta_scope: meta.function-call.identifier.gdscript
+    - include: builtin-types
+    - include: illegal-names
+    - include: class-names
+    - include: immediately-pop
+
+  case-pattern-class-arguments-begin:
+    - meta_include_prototype: false
     - match: \(
       scope: punctuation.section.arguments.begin.gdscript
-    - include: expressions
-    - match: ','
-      scope: punctuation.separator.arguments.gdscript
+      set:
+        - case-pattern-class-arguments-body
+        - allow-unpack-operators
+
+  case-pattern-class-arguments-body:
+    - meta_scope: meta.function-call.arguments.gdscript
     - match: \)
       scope: punctuation.section.arguments.end.gdscript
-      pop: true
+      pop: 1
+    - include: argument-separators
+    - include: case-pattern-keyword-arguments
+    - include: case-pattern-expressions
 
-  line-continuation:
-    # From Sublime's built-in Python syntax, with slight modification
-    - match: (\\)(.*)$\n?
+  case-pattern-keyword-arguments:
+    - match: (?={{identifier}}\s*{{assignment_operator}})
+      push: case-pattern-keyword-argument-name
+
+  case-pattern-keyword-argument-name:
+    - match: '{{assignment_operator}}'
+      scope: keyword.operator.assignment.gdscript
+      set: allow-unpack-operators
+    - include: parameter-names
+
+  case-pattern-operators:
+    - match: '[-+]'
+      scope: keyword.operator.arithmetic.gdscript
+    - match: \|
+      scope: keyword.operator.logical.gdscript
+
+  case-pattern-dictionaries:
+    - include: empty-dictionaries
+    - match: \{
+      scope: punctuation.section.mapping.begin.gdscript
+      push: case-pattern-dictionary-body
+
+  case-pattern-dictionary-end:
+    - match: \}
+      scope: punctuation.section.mapping.end.gdscript
+      pop: 1
+
+  case-pattern-dictionary-body:
+    - meta_scope: meta.mapping.gdscript
+    - include: case-pattern-dictionary-end
+    - include: comments
+    - include: illegal-assignment-expressions
+    - match: ','
+      scope: punctuation.separator.sequence.gdscript
+    - match: \*\*
+      scope: keyword.operator.unpacking.mapping.gdscript
+      set: case-pattern-dictionary-unpacking
+    - match: '{{colon}}'
+      scope: punctuation.separator.key-value.gdscript
+      set: case-pattern-dictionary-value
+    - match: (?=\S)
+      set: case-pattern-dictionary-key
+
+  case-pattern-dictionary-unpacking:
+    - meta_content_scope: meta.mapping.gdscript
+    - match: (?=\s*[,:}])
+      set: case-pattern-dictionary-body
+    - include: case-pattern-expressions
+
+  case-pattern-dictionary-key:
+    - meta_content_scope: meta.mapping.key.gdscript
+    - match: (?=\s*[,:}])
+      set: case-pattern-dictionary-body
+    - include: case-pattern-expressions
+
+  case-pattern-dictionary-value:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.mapping.gdscript
+    - include: comments
+    - match: (?=\S)
+      set:
+        - case-pattern-dictionary-value-body
+        - allow-unpack-operators
+
+  case-pattern-dictionary-value-body:
+    - meta_content_scope: meta.mapping.value.gdscript
+    - match: (?=\s*[,}])
+      set: case-pattern-dictionary-body
+    - include: case-pattern-expressions
+
+  case-pattern-groups-or-tuples:
+    - include: empty-tuples
+    - match: (?=\()
+      branch_point: case-pattern-groups-or-tuples
+      branch:
+        - case-pattern-group
+        - case-pattern-tuple
+
+  case-pattern-group:
+    - match: \(
+      scope: punctuation.section.group.begin.gdscript
+      set: case-pattern-group-body
+
+  case-pattern-group-body:
+    - meta_scope: meta.group.gdscript
+    - match: \)
+      scope: punctuation.section.group.end.gdscript
+      pop: 1
+    - match: (?=,)
+      fail: case-pattern-groups-or-tuples
+    - include: case-pattern-expressions
+
+  case-pattern-lists:
+    - include: empty-lists
+    - match: \[
+      scope: punctuation.section.sequence.begin.gdscript
+      push:
+        - case-pattern-list-body
+        - allow-unpack-operators
+
+  case-pattern-list-body:
+    - meta_scope: meta.sequence.list.gdscript
+    - match: \]
+      scope: punctuation.section.sequence.end.gdscript
+      pop: 1
+    - include: case-pattern-expressions
+
+  case-pattern-tuple:
+    - match: \(
+      scope: punctuation.section.sequence.begin.gdscript
+      set:
+        - case-pattern-tuple-body
+        - allow-unpack-operators
+
+  case-pattern-tuple-body:
+    - meta_scope: meta.sequence.tuple.gdscript
+    - match: \)
+      scope: punctuation.section.sequence.end.gdscript
+      pop: 1
+    - include: case-pattern-expressions
+
+###[ CONDITIONAL STATEMENTS ]#################################################
+
+  conditional-statements:
+    - match: if\b
+      scope: keyword.control.conditional.if.gdscript
+      push: if-statement-condition
+    - match: elif\b
+      scope: keyword.control.conditional.elseif.gdscript
+      push: elif-statement-condition
+    - match: (else)(?:\s*(:)|\b)
+      scope: meta.statement.conditional.else.gdscript
+      captures:
+        1: keyword.control.conditional.else.gdscript
+        2: punctuation.section.block.conditional.else.gdscript
+
+  if-statement-condition:
+    - meta_scope: meta.statement.conditional.if.gdscript
+    - match: '{{colon}}'
+      scope: punctuation.section.block.conditional.if.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+  elif-statement-condition:
+    - meta_scope: meta.statement.conditional.elseif.gdscript
+    - match: '{{colon}}'
+      scope: punctuation.section.block.conditional.elseif.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+###[ EXCEPTION STATEMENTS ]###################################################
+
+  exception-statements:
+    - match: (try)(?:\s*(:)|\b)
+      scope: meta.statement.exception.try.gdscript
+      captures:
+        1: keyword.control.exception.try.gdscript
+        2: punctuation.section.block.exception.try.gdscript
+    - match: (finally)(?:\s*(:)|\b)
+      scope: meta.statement.exception.finally.gdscript
+      captures:
+        1: keyword.control.exception.finally.gdscript
+        2: punctuation.section.block.exception.finally.gdscript
+    - match: except\b
+      scope: keyword.control.exception.catch.gdscript
+      push: except-statement-exception-list
+
+  except-statement-exception-list:
+    - meta_scope: meta.statement.exception.catch.gdscript
+    - match: '{{colon}}'
+      scope: punctuation.section.block.exception.catch.gdscript
+      pop: 1
+    - match: as\b
+      scope: keyword.control.exception.catch.as.gdscript
+      set: except-statement-as
+    - include: illegal-assignment-expressions
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+  except-statement-as:
+    - meta_content_scope: meta.statement.exception.catch.gdscript
+    - match: '{{colon}}'
+      scope: meta.statement.exception.catch.gdscript punctuation.section.block.exception.catch.gdscript
+      pop: 1
+    - include: illegal-assignment-expressions
+    - include: line-continuation-or-pop
+    - include: name
+
+###[ FOR STATEMENTS ]#########################################################
+
+  for-statements:
+    - match: (?:(async)\s+)?(for)\b
+      captures:
+        1: storage.modifier.async.gdscript
+        2: keyword.control.loop.for.gdscript
+      push: for-statement-target-list
+
+  for-statement-target-list:
+    - meta_scope: meta.statement.loop.for.gdscript
+    - match: '{{colon}}'
+      scope: invalid.illegal.missing-in.gdscript
+      pop: 1
+    - match: in\b
+      scope: keyword.control.loop.for.in.gdscript
+      set: for-statement-in
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+  for-statement-in:
+    - meta_content_scope: meta.statement.loop.for.gdscript
+    - match: '{{colon}}'
+      scope: meta.statement.loop.for.gdscript punctuation.section.block.loop.for.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+###[ MATCH STATEMENTS ]#######################################################
+
+  match-statements:
+    - match: (?=match\b)
+      branch_point: match-statements
+      branch:
+        - match-statement
+        - structural-pattern-fallback
+
+  match-statement:
+    - match: match
+      scope: keyword.control.conditional.match.gdscript
+      set:
+        - match-statement-body
+        - match-statement-begin
+
+  match-statement-begin:
+    # fail if match is directly followed by `:` or end of statement
+    - match: (?=$|#|;|:)
+      fail: match-statements
+    - include: line-continuations
+    - include: allow-unpack-operators
+
+  match-statement-body:
+    - meta_scope: meta.statement.conditional.match.gdscript
+    - match: (?=$|#|;)
+      fail: match-statements
+    - include: match-statement-end
+    - include: line-continuations
+    - include: expression-in-a-statement
+
+  match-statement-end:
+    - match: '{{colon}}'
+      scope: punctuation.section.block.conditional.match.gdscript
+      set: maybe-first-case-statement
+
+  maybe-first-case-statement:
+    # Disable detentation of first case statement by special indentation rule.
+    # see: https://github.com/sublimehq/Packages/issues/3456
+    - match: case\b
+      scope:
+        meta.statement.conditional.case.gdscript
+        keyword.control.conditional.case.gdscript
+      set:
+        - meta-disable-dedentation
+        - case-statement-pattern
+        - allow-unpack-operators
+    - include: comments
+    - include: else-pop
+
+  meta-disable-dedentation:
+    - meta_include_prototype: false
+    - meta_scope: meta.disable-dedentation.gdscript
+    - include: else-pop
+
+  structural-pattern-fallback:
+    # Fallback context, which is used if `match` or `case` don't seem to
+    # start a structural match pattern statement.
+    - match: (?={{path}}\s*\()
+      set:
+        - function-call-argument-list
+        - function-call-wrapper
+        - qualified-name-until-leaf
+    - include: generic-name
+
+###[ MODIFIER STATEMENTS ]####################################################
+
+  modifier-statements:
+    - match: global\b
+      scope: storage.modifier.global.gdscript
+      push: modifier-statement-body
+    - match: nonlocal\b
+      scope: storage.modifier.nonlocal.gdscript
+      push: modifier-statement-body
+
+  modifier-statement-body:
+    - meta_scope: meta.statement.modifier.gdscript
+    - include: line-continuation-or-pop
+    - include: name
+    - match: ','
+      scope: punctuation.separator.storage-list.gdscript
+    - match: \S+
+      scope: invalid.illegal.name.storage.gdscript
+
+###[ WHILE STATEMENTS ]#######################################################
+
+  while-statements:
+    - match: while\b
+      scope: keyword.control.loop.while.gdscript
+      push: while-statement-condition
+
+  while-statement-condition:
+    - meta_scope: meta.statement.loop.while.gdscript
+    - match: '{{colon}}'
+      scope: punctuation.section.block.loop.while.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+###[ WITH STATEMENTS ]########################################################
+
+  with-statements:
+    - match: (?:(async)\s+)?(with)\b
+      captures:
+        1: storage.modifier.async.gdscript
+        2: keyword.control.flow.with.gdscript
+      branch_point: with-statement-tuple
+      branch:
+        - with-statement-tuple
+        - with-statement-plain
+
+  with-statement-plain:
+    - meta_scope: meta.statement.with.gdscript
+    - match: '{{colon}}'
+      scope: punctuation.section.block.with.gdscript
+      pop: 1
+    - match: as\b
+      scope: keyword.control.flow.with.as.gdscript
+      push: with-statement-plain-as
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+  with-statement-plain-as:
+    - include: line-continuation-or-pop
+    - include: generators-groups-and-tuples
+    - include: lists
+    - include: name
+    - include: else-pop
+
+  with-statement-tuple:
+    - meta_scope: meta.statement.with.gdscript
+    - match: \(
+      scope: punctuation.section.sequence.begin.gdscript
+      set:
+        - with-statement-tuple-end
+        - with-statement-tuple-body
+    - include: with-statement-tuple-else-fail
+
+  with-statement-tuple-body:
+    - meta_scope: meta.sequence.tuple.gdscript
+    - match: \)
+      scope: punctuation.section.sequence.end.gdscript
+      pop: 1
+    - match: as\b
+      scope: keyword.control.flow.with.as.gdscript
+      push: with-statement-tuple-as
+    - include: expression-in-a-sequence
+
+  with-statement-tuple-as:
+    - include: comments
+    - include: generators-groups-and-tuples
+    - include: lists
+    - include: name
+    - include: else-pop
+
+  with-statement-tuple-end:
+    - meta_content_scope: meta.statement.with.gdscript
+    - match: '{{colon}}'
+      scope: meta.statement.with.gdscript punctuation.section.block.with.gdscript
+      pop: 1
+    - include: with-statement-tuple-else-fail
+
+  with-statement-tuple-else-fail:
+    - include: line-continuations
+    - match: (?=\S|$)
+      fail: with-statement-tuple
+
+###[ FLOW STATEMENTS ]########################################################
+
+  flow-statements:
+    - match: assert\b
+      scope: keyword.control.flow.assert.gdscript
+    - match: return\b
+      scope: keyword.control.flow.return.gdscript
+    - match: break\b
+      scope: keyword.control.flow.break.gdscript
+    - match: continue\b
+      scope: keyword.control.flow.continue.gdscript
+    - match: pass\b
+      scope: keyword.control.flow.pass.gdscript
+    - match: raise\b
+      scope: keyword.control.flow.raise.gdscript
+      push: raise-statement-body
+
+  raise-statement-body:
+    - meta_scope: meta.statement.raise.gdscript
+    - match: from\b
+      scope: keyword.control.flow.raise.from.gdscript
+      set: raise-statement-from
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+  raise-statement-from:
+    - meta_content_scope: meta.statement.raise.gdscript
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+###[ OTHER STATEMENTS ]#######################################################
+
+  other-statements:
+    - match: del\b
+      scope: keyword.other.del.gdscript
+    - match: exec\b(?!\s*($|[,.()\]}]))
+      scope: keyword.other.exec.gdscript
+    - match: print\b(?!\s*([,.()\]}]))
+      scope: keyword.other.print.gdscript
+
+###[ FOR EXPRESSIONS ]########################################################
+
+  for-expressions:
+    - match: (?:(async)\s+)?(for)\b
+      captures:
+        1: storage.modifier.async.gdscript
+        2: keyword.control.loop.for.generator.gdscript
+      push: for-expression-target-list
+
+  for-expression-target-list:
+    - meta_scope: meta.expression.generator.gdscript
+    - match: in\b
+      scope: keyword.control.loop.for.in.gdscript
+      pop: 1
+    - match: (?=[)\]}])
+      pop: 1
+    - include: expression-in-a-group
+
+###[ FLOW EXPRESSIONS ]#######################################################
+
+  keywords:
+    - match: if\b
+      scope: keyword.control.conditional.if.gdscript
+    - match: else\b
+      scope: keyword.control.conditional.else.gdscript
+    - match: await\b
+      scope: keyword.control.flow.await.gdscript
+    - match: (yield)(?:\s+(from))?\b
+      captures:
+        1: keyword.control.flow.yield.gdscript
+        2: keyword.control.flow.yield-from.gdscript
+
+###[ FUNCTION CALLS ]#########################################################
+
+  function-calls:
+    - match: (?=(\.\s*)?{{path}}\s*\()
+      push:
+        - function-call-argument-list
+        - function-call-wrapper
+        - qualified-name-until-leaf
+
+  function-call-wrapper:
+    - match: (\.)\s*
+      scope: meta.path.gdscript
+      captures:
+        1: punctuation.accessor.dot.gdscript
+      set: qualified-function-call-name
+    - match: ''
+      set: unqualified-function-call-name
+
+  qualified-function-call-name:
+    - meta_content_scope: meta.function-call.identifier.gdscript meta.path.gdscript
+    - include: dotted-name-specials
+    - include: constant-names
+    - include: function-names
+    - include: immediately-pop
+
+  unqualified-function-call-name:
+    - meta_scope: meta.function-call.identifier.gdscript
+    - include: name-specials
+    - include: function-names
+    - include: immediately-pop
+
+  function-call-argument-list:
+    - meta_include_prototype: false
+    - match: \(
+      scope: punctuation.section.arguments.begin.gdscript
+      set:
+        - function-call-argument-list-body
+        - allow-unpack-operators
+
+  function-call-argument-list-body:
+    - meta_scope: meta.function-call.arguments.gdscript
+    - match: \)
+      scope: punctuation.section.arguments.end.gdscript
+      set: after-expression
+    - include: arguments
+
+  arguments:
+    - include: argument-separators
+    - include: keyword-arguments
+    - include: expression-in-a-sequence
+
+  argument-separators:
+    - match: ','
+      scope: punctuation.separator.arguments.gdscript
+      push: allow-unpack-operators
+
+  keyword-arguments:
+    - match: (?={{identifier}}\s*{{assignment_operator}})
+      push: keyword-argument-name
+
+  keyword-argument-name:
+    - match: '{{assignment_operator}}'
+      scope: keyword.operator.assignment.gdscript
+      set:
+        - keyword-argument-value
+        - allow-unpack-operators
+    - include: parameter-names
+
+  keyword-argument-value:
+    - match: (?=[,)]|:(?!=))
+      pop: 1
+    - include: expression-in-a-group
+
+###[ LAMBDAS ]################################################################
+
+  lambda-in-groups:
+    # A lambda keyword within a group may be part of a generator expression
+    # Hence pop contexts off stack if `for` keyword is matched in order to
+    # not scope it invalid.
+    - match: lambda(?=\s|:|$)
+      scope:
+        meta.function.inline.gdscript
+        storage.type.function.inline.gdscript
+        keyword.declaration.function.inline.gdscript
+      push:
+        - lambda-in-group-parameters
+        - allow-unpack-operators
+
+  lambda-in-group-parameters:
+    - meta_content_scope: meta.function.inline.parameters.gdscript
+    - match: '{{colon}}'
+      scope: meta.function.inline.gdscript punctuation.section.function.begin.gdscript
+      set:
+        - meta_include_prototype: false
+        - match: ''
+          set: lambda-in-group-body
+    - include: lambda-in-group-end
+    - include: lambda-parameters-common
+
+  lambda-in-group-body:
+    - meta_scope: meta.function.inline.body.gdscript
+    - include: lambda-in-group-end
+    - include: lambda-body
+
+  lambda-in-group-end:
+    - match: (?=for\b)
+      pop: 1
+
+  lambdas:
+    - match: lambda(?=\s|:|$)
+      scope:
+        meta.function.inline.gdscript
+        storage.type.function.inline.gdscript
+        keyword.declaration.function.inline.gdscript
+      push:
+        - lambda-parameters
+        - allow-unpack-operators
+
+  lambda-parameters:
+    - meta_content_scope: meta.function.inline.parameters.gdscript
+    - match: '{{colon}}'
+      scope: meta.function.inline.gdscript punctuation.section.function.begin.gdscript
+      set:
+        - meta_include_prototype: false
+        - match: ''
+          set: lambda-body
+    - include: lambda-parameters-common
+
+  lambda-parameters-common:
+    - match: ','
+      scope: punctuation.separator.parameters.gdscript
+      push: allow-unpack-operators
+    - match: '{{assignment_operator}}'
+      scope: keyword.operator.assignment.gdscript
+      push:
+        - keyword-argument-value
+        - allow-unpack-operators
+    - include: function-parameter-tuples
+    - include: parameter-names
+    - include: illegal-assignment-expressions
+    - include: line-continuation-or-pop
+    - match: \S
+      scope: invalid.illegal.expected-parameter.gdscript
+
+  lambda-body:
+    - meta_scope: meta.function.inline.body.gdscript
+    - include: illegal-assignment-expressions
+    # We don't know whether we are within a grouped
+    # or line-statement context at this point.
+    # If we're in a group, the underlying context will take over
+    # at the end of the line.
+    - match: (?=[,:)}\]])|$
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: expression-in-a-statement
+
+###[ GENERATORS GROUPS TUBLES ]###############################################
+
+  generators-groups-and-tuples:
+    - include: empty-tuples
+    - match: (?=\()
+      branch_point: generators-groups-and-tuples
+      branch:
+        - maybe-group
+        - maybe-tuple
+        - maybe-generator
+
+  maybe-group:
+    - match: \(
+      scope: punctuation.section.group.begin.gdscript
+      set: group-body
+
+  group-body:
+    - meta_scope: meta.group.gdscript
+    - match: \)
+      scope: punctuation.section.group.end.gdscript
+      set: after-expression
+    - match: (?=,|\bfor\b)
+      fail: generators-groups-and-tuples
+    - include: expression-in-a-sequence
+
+  maybe-generator:
+    - match: \(
+      scope: punctuation.section.sequence.begin.gdscript
+      set: generator-body
+
+  generator-body:
+    - meta_scope: meta.sequence.generator.gdscript
+    - match: \)
+      scope: punctuation.section.sequence.end.gdscript
+      set: after-expression
+    - include: expression-in-a-sequence
+
+  maybe-tuple:
+    - match: \(
+      scope: punctuation.section.sequence.begin.gdscript
+      set: tuple-body
+
+  tuple-body:
+    - meta_scope: meta.sequence.tuple.gdscript
+    - match: \)
+      scope: punctuation.section.sequence.end.gdscript
+      set: after-expression
+    - match: (?=for\b)
+      fail: generators-groups-and-tuples
+    - include: expression-in-a-sequence
+
+  empty-tuples:
+    - match: (\()\s*(\))
+      scope: meta.sequence.tuple.empty.gdscript
+      captures:
+        1: punctuation.section.sequence.begin.gdscript
+        2: punctuation.section.sequence.end.gdscript
+      push: after-expression
+
+  illegal-stray-parens:
+    - match: \)
+      scope: invalid.illegal.stray.gdscript
+
+###[ LISTS ]##################################################################
+
+  lists:
+    - include: empty-lists
+    - match: \[
+      scope: punctuation.section.sequence.begin.gdscript
+      push:
+        - list-body
+        - allow-unpack-operators
+
+  list-body:
+    - meta_scope: meta.sequence.list.gdscript
+    - match: \]
+      scope: punctuation.section.sequence.end.gdscript
+      set: after-expression
+    - include: expression-in-a-sequence
+
+  empty-lists:
+    - match: (\[)\s*(\])
+      scope: meta.sequence.list.empty.gdscript
+      captures:
+        1: punctuation.section.sequence.begin.gdscript
+        2: punctuation.section.sequence.end.gdscript
+      push: after-expression
+
+  illegal-stray-brackets:
+    - match: \]
+      scope: invalid.illegal.stray.gdscript
+
+###[ DICTIONARIES AND SETS ]##################################################
+
+  dictionaries-and-sets:
+    - include: empty-dictionaries
+    - match: (?=\{)
+      branch_point: dictionaries-and-sets
+      branch:
+        - maybe-set
+        - maybe-dictionary
+
+  maybe-dictionary:
+    - match: \{
+      scope: punctuation.section.mapping.begin.gdscript
+      set: allow-dictionary-unpack-operator
+
+  dictionary-end:
+    - match: \}
+      scope: meta.mapping.gdscript punctuation.section.mapping.end.gdscript
+      set: after-expression
+
+  dictionary-separator:
+    - match: ','
+      scope: punctuation.separator.sequence.gdscript
+      set: allow-dictionary-unpack-operator
+
+  allow-dictionary-unpack-operator:
+    - meta_scope: meta.mapping.gdscript
+    - include: comments
+    - match: \*{3,}
+      scope: invalid.illegal.syntax.gdscript
+      set: dictionary-unpacking-body
+    - match: \*\*
+      scope: keyword.operator.unpacking.mapping.gdscript
+      set: dictionary-unpacking-body
+    - match: \*
+      scope: invalid.illegal.unexpected-operator.gdscript
+      set: dictionary-unpacking-body
+    - match: (?=\S)
+      set: dictionary-body
+    - match: ^(?!\s*([#*]|$))
+      set: dictionary-body
+
+  dictionary-unpacking-body:
+    - meta_content_scope: meta.mapping.gdscript
+    - include: dictionary-end
+    - include: dictionary-separator
+    - include: expression-in-a-group
+
+  dictionary-body:
+    - meta_content_scope: meta.mapping.gdscript
+    - include: dictionary-end
+    - include: comments
+    - include: illegal-assignment-expressions
+    - include: illegal-commas
+    - match: '{{colon}}'
+      scope: meta.mapping.gdscript punctuation.separator.key-value.gdscript
+      set: dictionary-value
+    - match: (?=\S)
+      set: directory-key-body
+
+  directory-key-body:
+    - meta_scope: meta.mapping.key.gdscript
+    - match: (?=\s*[,:}])
+      set: dictionary-body
+    - include: expression-in-a-group
+
+  dictionary-value:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.mapping.gdscript
+    - include: dictionary-end
+    - include: dictionary-separator
+    - match: (?=\S)
+      set: directory-value-body
+
+  directory-value-body:
+    - meta_content_scope: meta.mapping.value.gdscript
+    - match: (?=\s*[,}])
+      set: after-dictionary-value
+    - match: (?=\s*(?:async|for)\b)
+      set: dictionary-generator-body
+    - include: expression-in-a-group
+
+  after-dictionary-value:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.mapping.gdscript
+    - include: dictionary-end
+    - include: dictionary-separator
+
+  dictionary-generator-body:
+    - meta_content_scope: meta.mapping.gdscript
+    - include: dictionary-end
+    - include: illegal-commas
+    - include: expression-in-a-sequence
+
+  maybe-set:
+    - match: \{
+      scope: punctuation.section.set.begin.gdscript
+      set:
+        - maybe-set-body
+        - maybe-set-begin
+
+  maybe-set-begin:
+    - match: (?=\*\*)  # looks like a dictionary
+      fail: dictionaries-and-sets
+    - include: allow-sequence-unpack-operators
+
+  maybe-set-body:
+    - meta_scope: meta.set.gdscript
+    - match: (?=,|:=)
+      set: set-body
+    - match: (?=:)
+      fail: dictionaries-and-sets
+    - include: set-body
+
+  set-body:
+    - meta_scope: meta.set.gdscript
+    - match: \}
+      scope: punctuation.section.set.end.gdscript
+      set: after-expression
+    - match: ','
+      scope: punctuation.separator.set.gdscript
+      push: allow-sequence-unpack-operators
+    - include: expression-in-a-sequence
+    - include: illegal-colons
+
+  allow-sequence-unpack-operators:
+    - include: comments
+    - match: \*{3,}
+      scope: invalid.illegal.syntax.gdscript
+      pop: 1
+    - match: \*\*
+      scope: invalid.illegal.unexpected-operator.gdscript
+      pop: 1
+    - match: \*
+      scope: keyword.operator.unpacking.sequence.gdscript
+      pop: 1
+    - include: else-pop
+    - match: ^(?!\s*([#*]|$))
+      pop: 1
+
+  empty-dictionaries:
+    - match: (\{)\s*(\})
+      scope: meta.mapping.empty.gdscript
+      captures:
+        1: punctuation.section.mapping.begin.gdscript
+        2: punctuation.section.mapping.end.gdscript
+      push: after-expression
+
+  illegal-colons:
+    - match: '{{colon}}'
+      scope: invalid.illegal.unexpected-colon.gdscript
+
+  illegal-commas:
+    - match: ','
+      scope: invalid.illegal.unexpected-comma.gdscript
+
+  illegal-stray-braces:
+    - match: \}
+      scope: invalid.illegal.stray.gdscript
+
+###[ ITEM ACCESS ]############################################################
+
+  items:
+    - match: (?={{path}}\s*\[)
+      push:
+        - item-access
+        - qualified-name-content
+
+  item-access:
+    - match: \[
+      scope: punctuation.section.brackets.begin.gdscript
+      set: maybe-item-access-body
+
+  maybe-item-access-body:
+    - meta_scope: meta.brackets.gdscript
+    - match: \]
+      scope: punctuation.section.brackets.end.gdscript
+      set: after-expression
+    - match: '{{colon}}'
+      scope: punctuation.separator.slice.gdscript
+    - include: expression-in-a-group
+
+###[ OPERATORS ]##############################################################
+
+  assignment-expressions:
+    - match: :=
+      scope: keyword.operator.assignment.inline.gdscript
+
+  illegal-assignment-expressions:
+    - match: :=
+      scope: invalid.illegal.assignment.gdscript
+
+  illegal-assignment:
+    - match: \:?=
+      scope: invalid.illegal.assignment.gdscript
+      pop: 1
+    - include: line-continuation-or-pop
+    - include: else-pop
+
+  operators:
+    - match: '{{augmented_assignment_operators}}'
+      scope: invalid.illegal.assignment.gdscript
+    - match: <>
+      scope: invalid.deprecated.operator.gdscript
+    - match: <<|>>|\*\*|//|[-%&*+/@^|~]
+      scope: keyword.operator.arithmetic.gdscript
+    - match: <=|>=|==|\!=|<|>
+      scope: keyword.operator.comparison.gdscript
+    - match: =
+      scope: invalid.illegal.assignment.gdscript
+    - match: (?:and|in|is|not|or)\b
+      scope: keyword.operator.logical.gdscript
+    - include: sequence-separators
+
+  allow-unpack-operators:
+    # Match unpacking operators, if present
+    - include: comments
+    - match: \*{3,}
+      scope: invalid.illegal.syntax.gdscript
+      pop: 1
+    - match: \*\*
+      scope: keyword.operator.unpacking.mapping.gdscript
+      pop: 1
+    - match: \*
+      scope: keyword.operator.unpacking.sequence.gdscript
+      pop: 1
+    - include: else-pop
+    - match: ^(?!\s*([#*]|$))
+      pop: 1
+
+  sequence-separators:
+    - match: ','
+      scope: punctuation.separator.sequence.gdscript
+      push: allow-unpack-operators
+
+  statement-terminators:
+    - match: ;
+      scope: punctuation.terminator.statement.gdscript
+
+###[ IDENTIFIERS ]############################################################
+
+  name:
+    - match: (?={{identifier}})
+      push: name-content
+
+  name-content:
+    - include: name-specials
+    - include: constant-names
+    - include: generic-names
+    - include: immediately-pop
+
+  dotted-name:
+    - match: \s*(\.)\s*(?={{identifier}})
+      captures:
+        1: punctuation.accessor.dot.gdscript
+      push: dotted-name-content
+
+  dotted-name-content:
+    - include: dotted-name-specials
+    - include: constant-names
+    - include: generic-names
+    - include: immediately-pop
+
+  qualified-name:
+    - match: (?={{path}})
+      push: qualified-name-content
+    - match: \.
+      scope: punctuation.accessor.dot.gdscript
+
+  qualified-name-content:
+    - meta_scope: meta.path.gdscript
+    - include: name
+    - include: dotted-name
+    - include: immediately-pop
+
+  qualified-name-until-leaf:
+    # Push this together with another context to match a qualified name
+    # until the last non-special identifier (if any).
+    # This allows the leaf to be scoped individually.
+    - meta_scope: meta.path.gdscript
+    # If a line continuation follows, this may or may not be the last leaf (most likley not though)
+    - match: (?={{identifier}}\s*(\.|\\))
+      push: name-content
+    - match: (\.)\s*(?={{identifier}}\s*(\.|\\))
+      captures:
+        1: punctuation.accessor.dot.gdscript
+      push: dotted-name-content
+    - match: \.(?!\s*{{identifier}})  # don't match last dot
+      scope: punctuation.accessor.dot.gdscript
+    - match: (?=\S|$)
+      pop: 1
+
+  name-specials:
+    - include: builtin-functions
+    - include: builtin-types
+    - include: magic-functions
+    - include: magic-variables
+    - include: class-variables
+    - include: wildcard-variables
+    - include: illegal-names
+
+  dotted-name-specials:
+    - include: magic-functions
+    - include: magic-variables
+    - include: illegal-names
+
+  builtin-functions:
+    - match: '{{builtin_functions}}'
+      scope: support.function.builtin.gdscript
+    - match: '{{typing_functions}}'
+      scope: support.function.typing.gdscript
+
+  builtin-types:
+    - match: '{{builtin_types}}'
+      scope: support.type.gdscript
+    - match: '{{typing_types}}'
+      scope: support.class.typing.gdscript
+
+  magic-functions:
+    # these methods have magic interpretation by python and are generally called indirectly through syntactic constructs
+    # https://docs.gdscript.org/2/reference/datamodel.html
+    # https://docs.gdscript.org/3/reference/datamodel.html
+    - match: '{{magic_functions}}'
+      scope: support.function.magic.gdscript
+
+  magic-variables:
+    # magic variables which a class/module/object may have.
+    # https://docs.gdscript.org/3/library/inspect.html#types-and-members
+    # https://docs.gdscript.org/3/reference/datamodel.html#object.__slots__
+    # https://docs.gdscript.org/3/reference/datamodel.html#preparing-the-class-namespace
+    - match: '{{magic_variables}}'
+      scope: support.variable.magic.gdscript
+
+  class-names:
+    - match: '{{identifier}}'
+      scope: support.class.gdscript
+
+  constant-names:
+    - match: '{{identifier_constant}}'
+      scope: variable.other.constant.gdscript
+
+  function-names:
+    - match: '{{identifier}}'
+      scope: variable.function.gdscript
+
+  generic-names:
+    - match: '{{identifier}}'
+      scope: meta.generic-name.gdscript
+
+  generic-name:
+    - match: '{{identifier}}'
+      scope: meta.generic-name.gdscript
+      pop: 1
+
+  illegal-names:
+    - match: '{{illegal_names}}\b'
+      scope: invalid.illegal.name.gdscript
+
+  illegal-name:
+    - match: '{{illegal_names}}\b'
+      scope: invalid.illegal.name.gdscript
+      pop: 1
+
+  class-variables:
+    - match: (?:self|cls)\b
+      scope: variable.language.gdscript
+
+  parameter-names:
+    - include: illegal-names
+    - match: '{{identifier}}'
+      scope: variable.parameter.gdscript
+
+  wildcard-variables:
+    - match: _(?!{{identifier_continue}})
+      scope: variable.language.anonymous.gdscript
+
+  wildcard-variable:
+    - match: _(?!{{identifier_continue}})
+      scope: variable.language.anonymous.gdscript
+      pop: 1
+
+###[ LITERALS ]###############################################################
+
+  constants:
+    - include: booleans
+    - include: nones
+    - match: (?:Ellipsis|NotImplemented|__debug__)\b
+      scope: constant.language.gdscript
+      push: illegal-assignment
+    - match: \.{3}(?!\w)
+      scope: constant.language.gdscript
+
+  booleans:
+    - match: False\b
+      scope: constant.language.boolean.false.gdscript
+      push: illegal-assignment
+    - match: True\b
+      scope: constant.language.boolean.true.gdscript
+      push: illegal-assignment
+
+  nones:
+    - match: None\b
+      scope: constant.language.null.gdscript
+      push: illegal-assignment
+
+  numbers:
+    # https://docs.gdscript.org/3/reference/lexical_analysis.html#numeric-literals
+    # hexadecimal
+    - match: (0[xX])(\h*)([lL]) # py2
+      scope: meta.number.integer.hexadecimal.gdscript
+      captures:
+        1: constant.numeric.base.gdscript
+        2: constant.numeric.value.gdscript
+        3: constant.numeric.suffix.gdscript
+    - match: (0[xX])((?:_?\h)+)
+      scope: meta.number.integer.hexadecimal.gdscript
+      captures:
+        1: constant.numeric.base.gdscript
+        2: constant.numeric.value.gdscript
+    # octal
+    - match: (0[oO]?)((?=[oO]|[0-7])[0-7]*)([lL]) # py2
+      scope: meta.number.integer.octal.gdscript
+      captures:
+        1: constant.numeric.base.gdscript
+        2: constant.numeric.value.gdscript
+        3: constant.numeric.suffix.gdscript
+    - match: (0)([0-7]+)(\d*) # py2
+      scope: meta.number.integer.octal.gdscript
+      captures:
+        1: constant.numeric.base.gdscript
+        2: constant.numeric.value.gdscript
+        3: invalid.illegal.digit.gdscript
+    - match: (0[oO])((?:_?[0-7])+)(\d*)
+      scope: meta.number.integer.octal.gdscript
+      captures:
+        1: constant.numeric.base.gdscript
+        2: constant.numeric.value.gdscript
+        3: invalid.illegal.digit.gdscript
+    # binary
+    - match: (0[bB])([01]*)([lL]) # py2
+      scope: meta.number.integer.binary.gdscript
+      captures:
+        1: constant.numeric.base.gdscript
+        2: constant.numeric.value.gdscript
+        3: constant.numeric.suffix.gdscript
+    - match: (0[bB])((?:_?[01])*)(\d*)
+      scope: meta.number.integer.binary.gdscript
+      captures:
+        1: constant.numeric.base.gdscript
+        2: constant.numeric.value.gdscript
+        3: invalid.illegal.digit.gdscript
+    # complex
+    - match: |-
+        (?x)
+        (
+          # 1.j, 1.1j, 1.1e1j, 1.1e-1j, 1.e1j, 1.e-1 | 1e1j, 1e-1j
+          {{digits}} (\.)? {{digits}}? {{exponent}}?
+          # .1j, .1e1j, .1e-1j
+          | (\.) {{digits}} {{exponent}}?
+        )
+        ([jJ])
+      scope: meta.number.imaginary.decimal.gdscript
+      captures:
+        1: constant.numeric.value.gdscript
+        2: punctuation.separator.decimal.gdscript
+        3: punctuation.separator.decimal.gdscript
+        4: constant.numeric.suffix.gdscript
+    # floating point
+    - match: |-
+        (?x:
+          # 1., 1.1, 1.1e1, 1.1e-1, 1.e1, 1.e-1 | 1e1, 1e-1
+          {{digits}} (?: (\.) {{digits}}? {{exponent}}? | {{exponent}} )
+          # .1, .1e1, .1e-1
+          | (\.) {{digits}} {{exponent}}?
+        )
+      scope: meta.number.float.decimal.gdscript constant.numeric.value.gdscript
+      captures:
+        1: punctuation.separator.decimal.gdscript
+        2: punctuation.separator.decimal.gdscript
+    # integer
+    - match: ([1-9]\d*|0)([lL])\b # py2
+      scope: meta.number.integer.decimal.gdscript
+      captures:
+        1: constant.numeric.value.gdscript
+        2: constant.numeric.suffix.gdscript
+    - match: (?:(0?)[1-9][\d_]*|0)
+      scope: meta.number.integer.decimal.gdscript constant.numeric.value.gdscript
+      captures:
+        1: invalid.illegal.digits.gdscript
+
+###[ DOCSTRINGS ]#############################################################
+
+  docstrings:
+    - include: double-quoted-docstrings
+    - include: single-quoted-docstrings
+
+  double-quoted-docstrings:
+    - match: ^\s*(?i)(u)?(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: comment.block.documentation.gdscript punctuation.definition.comment.begin.gdscript
+      push: maybe-double-quoted-docstring-summery
+    - match: ^\s*(?i)(ur|ru?)(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: comment.block.documentation.gdscript punctuation.definition.comment.begin.gdscript
+      push: maybe-double-quoted-raw-docstring-summery
+
+  maybe-double-quoted-docstring-summery:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: double-quoted-docstring-end
+    - match: (?=\S)
+      set: double-quoted-docstring-summery
+
+  double-quoted-docstring-summery:
+    - meta_content_scope: comment.block.documentation.summary.gdscript
+    - match: $
+      set: double-quoted-docstring-body
+    - include: double-quoted-docstring-body
+
+  double-quoted-docstring-end:
+    - match: '"""'
+      scope: comment.block.documentation.gdscript punctuation.definition.comment.end.gdscript
+      pop: 1
+
+  double-quoted-docstring-body:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: double-quoted-docstring-end
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+
+  maybe-double-quoted-raw-docstring-summery:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: double-quoted-docstring-end
+    - match: (?=\S)
+      set: double-quoted-raw-docstring-summery
+
+  double-quoted-raw-docstring-summery:
+    - meta_content_scope: comment.block.documentation.summary.gdscript
+    - match: $
+      set: double-quoted-raw-docstring-body
+    - include: double-quoted-raw-docstring-body
+
+  double-quoted-raw-docstring-body:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: double-quoted-docstring-end
+    - include: escaped-raw-quotes
+
+  single-quoted-docstrings:
+    - match: ^\s*(?i)(u)?(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: comment.block.documentation.gdscript punctuation.definition.comment.begin.gdscript
+      push: maybe-single-quoted-docstring-summery
+    - match: ^\s*(?i)(ur|ru?)(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: comment.block.documentation.gdscript punctuation.definition.comment.begin.gdscript
+      push: maybe-single-quoted-raw-docstring-summery
+
+  single-quoted-docstring-end:
+    - match: "'''"
+      scope: comment.block.documentation.gdscript punctuation.definition.comment.end.gdscript
+      pop: 1
+
+  maybe-single-quoted-docstring-summery:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: single-quoted-docstring-end
+    - match: (?=\S)
+      set: single-quoted-docstring-summery
+
+  single-quoted-docstring-summery:
+    - meta_content_scope: comment.block.documentation.summary.gdscript
+    - match: $
+      set: single-quoted-docstring-body
+    - include: single-quoted-docstring-body
+
+  single-quoted-docstring-body:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: single-quoted-docstring-end
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+
+  maybe-single-quoted-raw-docstring-summery:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: single-quoted-docstring-end
+    - match: (?=\S)
+      set: single-quoted-raw-docstring-summery
+
+  single-quoted-raw-docstring-summery:
+    - meta_content_scope: comment.block.documentation.summary.gdscript
+    - match: $
+      set: single-quoted-raw-docstring-body
+    - include: single-quoted-raw-docstring-body
+
+  single-quoted-raw-docstring-body:
+    - meta_content_scope: comment.block.documentation.gdscript
+    - include: single-quoted-docstring-end
+    - include: escaped-raw-quotes
+
+###[ STRINGS ]################################################################
+
+  strings:
+    - match: (?={{string_prefix}}['"])
+      push: string
+
+  string:
+    - meta_include_prototype: false
+    # triple-quoted versions must be matched first
+    - include: triple-double-quoted-string
+    - include: double-quoted-string
+    - include: triple-single-quoted-string
+    - include: single-quoted-string
+
+###[ TRIPLE DOUBLE QUOTED STRINGS ]###########################################
+
+  triple-double-quoted-string:
+    - include: triple-double-quoted-plain-raw-b-string
+    - include: triple-double-quoted-plain-raw-f-string
+    - include: triple-double-quoted-plain-raw-u-string
+    - include: triple-double-quoted-b-string
+    - include: triple-double-quoted-f-string
+    - include: triple-double-quoted-u-string
+
+  triple-double-quoted-string-end:
+    - match: '"""'
+      scope: meta.string.gdscript string.quoted.double.block.gdscript punctuation.definition.string.end.gdscript
+      set: after-expression
+
+  triple-double-quoted-string-pop:
+    - match: (?=""")
+      pop: 1
+
+  triple-double-quoted-plain-raw-b-string:
+    # Triple-quoted capital R raw string, bytes, no syntax embedding
+    - match: ([bB]R|R[bB])(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-double-quoted-plain-raw-b-string-body
+
+  triple-double-quoted-plain-raw-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.block.gdscript
+    - include: triple-double-quoted-string-end
+    - include: triple-double-quoted-plain-raw-b-string-content
+
+  triple-double-quoted-plain-raw-b-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+
+  triple-double-quoted-plain-raw-f-string:
+    # Triple-quoted raw f-string
+    - match: ([fF]R|R[fF])(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-double-quoted-plain-raw-f-string-body
+
+  triple-double-quoted-plain-raw-f-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.block.gdscript
+    - include: triple-double-quoted-string-end
+    - include: triple-double-quoted-plain-raw-f-string-content
+
+  triple-double-quoted-plain-raw-f-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+    - include: triple-double-quoted-f-string-replacements
+
+  triple-double-quoted-plain-raw-u-string:
+    # Triple-quoted capital R raw string, unicode or not, no syntax embedding
+    - match: ([uU]?R)(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-double-quoted-plain-raw-u-string-body
+
+  triple-double-quoted-plain-raw-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.block.gdscript
+    - include: triple-double-quoted-string-end
+    - include: triple-double-quoted-plain-raw-u-string-content
+
+  triple-double-quoted-plain-raw-u-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+    - include: escaped-unicode-chars
+
+  triple-double-quoted-b-string:
+    # Triple-quoted string, bytes, no syntax embedding
+    - match: ([bB])(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-double-quoted-b-string-body
+
+  triple-double-quoted-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.block.gdscript
+    - include: triple-double-quoted-string-end
+    - include: triple-double-quoted-b-string-content
+
+  triple-double-quoted-b-string-content:
+    - include: string-prototype
+    - include: string-continuations
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: triple-double-quoted-string-replacements
+
+  triple-double-quoted-f-string:
+    # Triple-quoted f-string
+    - match: ([fF])(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-double-quoted-f-string-body
+
+  triple-double-quoted-f-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.block.gdscript
+    - include: triple-double-quoted-string-end
+    - include: triple-double-quoted-f-string-content
+
+  triple-double-quoted-f-string-content:
+    - include: string-prototype
+    - include: string-continuations
+    - include: triple-double-quoted-f-string-replacements
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+
+  triple-double-quoted-u-string:
+    # Triple-quoted string, unicode or not, will detect SQL
+    - match: ([uU]?)(""")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-double-quoted-u-string-body
+
+  triple-double-quoted-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.block.gdscript
+    - include: triple-double-quoted-string-end
+    - include: string-continuations
+    - include: triple-double-quoted-u-string-syntax
+
+  triple-double-quoted-u-string-syntax:
+    - match: (?=\S)
+      set: double-quoted-plain-u-block-string-body
+
+  double-quoted-plain-u-block-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.block.gdscript
+    - include: triple-double-quoted-string-end
+    - include: triple-double-quoted-u-string-content
+
+  triple-double-quoted-u-string-content:
+    - include: string-prototype
+    - include: string-continuations
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: triple-double-quoted-string-replacements
+
+  triple-double-quoted-string-replacements:
+    - include: escaped-string-braces
+    - match: (?=\{)
+      branch_point: triple-double-quoted-string-replacement
+      branch:
+        - triple-double-quoted-string-replacement
+        - string-replacement-fallback
+
+  triple-double-quoted-string-replacement:
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      set: triple-double-quoted-string-replacement-body
+
+  triple-double-quoted-string-replacement-body:
+    - meta_scope: constant.other.placeholder.gdscript
+    - include: string-replacement-body
+    - match: \[
+      scope: punctuation.section.brackets.begin.gdscript
+      push: triple-double-string-replacement-brackets-body
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      push: triple-double-quoted-string-replacement-formatspec-body
+    - match: (?!\w) # restrict field names to reduce risk of false positives
+      fail: triple-double-quoted-string-replacement
+
+  triple-double-string-replacement-brackets-body:
+    - include: string-replacement-brackets-body
+    - include: triple-double-quoted-string-replacement-fail
+
+  triple-double-quoted-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: string-replacement-formatspec-body
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      push: triple-double-quoted-string-replacement-body
+    - include: triple-double-quoted-string-replacement-fail
+
+  triple-double-quoted-string-replacement-fail:
+    - match: (?="""|$)
+      fail: triple-double-quoted-string-replacement
+
+  triple-double-quoted-f-string-replacements:
+    - include: f-string-replacements
+    - match: \{
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-meta
+        - triple-double-quoted-f-string-replacement-formatspec
+        - triple-double-quoted-f-string-replacement-expression
+
+  triple-double-quoted-f-string-replacements-regexp:
+    # Same as f-string-replacements, but will reset the entire scope stack.
+    - include: f-string-replacements-regexp
+    - match: '{{fstring_regexp_interpolation_begin}}'
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-regexp-meta
+        - triple-double-quoted-f-string-replacement-formatspec
+        - triple-double-quoted-f-string-replacement-expression
+
+  triple-double-quoted-f-string-replacement-expression:
+    - meta_content_scope: source.gdscript.embedded
+    - include: f-string-replacement-expression
+
+  triple-double-quoted-f-string-replacement-formatspec:
+    - meta_include_prototype: false
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      set: triple-double-quoted-f-string-replacement-formatspec-body
+    - include: triple-double-quoted-f-string-replacement-end
+
+  triple-double-quoted-f-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: triple-double-quoted-f-string-replacement-end
+    - include: triple-double-quoted-f-string-replacements
+
+  triple-double-quoted-f-string-replacement-end:
+    - include: f-string-replacement-end
+    - match: (?=""")
+      pop: 2
+
+###[ DOUBLE QUOTED STRINGS ]##################################################
+
+  double-quoted-strings:
+    - match: (?={{string_prefix}}"(?!"))
+      push: double-quoted-string
+
+  double-quoted-string:
+    - meta_include_prototype: false
+    - include: double-quoted-plain-raw-b-string
+    - include: double-quoted-plain-raw-f-string
+    - include: double-quoted-plain-raw-u-string
+    - include: double-quoted-b-string
+    - include: double-quoted-f-string
+    - include: double-quoted-u-string
+
+  double-quoted-string-end:
+    - match: '"'
+      scope: meta.string.gdscript string.quoted.double.gdscript punctuation.definition.string.end.gdscript
+      set: after-expression
+    - match: \n
+      scope: meta.string.gdscript string.quoted.double.gdscript invalid.illegal.unclosed-string.gdscript
+      set: after-expression
+    - include: string-continuations
+
+  double-quoted-string-pop:
+    - match: (?="|\n)
+      pop: 1
+    - include: string-continuations
+
+  double-quoted-plain-raw-b-string:
+    # Single-line capital R raw string, bytes, no syntax embedding
+    - match: ([bB]R|R[bB])(")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.gdscript punctuation.definition.string.begin.gdscript
+      set: double-quoted-plain-raw-b-string-body
+
+  double-quoted-plain-raw-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.gdscript
+    - include: double-quoted-string-end
+    - include: double-quoted-plain-raw-b-string-content
+
+  double-quoted-plain-raw-b-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+
+  double-quoted-plain-raw-f-string:
+    # Single-line raw f-string
+    - match: (R[fF]|[fF]R)(")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.gdscript punctuation.definition.string.begin.gdscript
+      set: double-quoted-plain-raw-f-string-body
+
+  double-quoted-plain-raw-f-string-body:
+    - meta_content_scope: meta.string.gdscript string.quoted.double.gdscript
+    - meta_include_prototype: false
+    - include: double-quoted-string-end
+    - include: double-quoted-plain-raw-f-string-content
+
+  double-quoted-plain-raw-f-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+    - include: double-quoted-f-string-replacements
+
+  double-quoted-plain-raw-u-string:
+    # Single-line capital R raw string, unicode or not, no syntax embedding
+    - match: ([uU]?R)(")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.gdscript punctuation.definition.string.begin.gdscript
+      set: double-quoted-plain-raw-u-string-body
+
+  double-quoted-plain-raw-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.gdscript
+    - include: double-quoted-string-end
+    - include: double-quoted-plain-raw-u-string-content
+
+  double-quoted-plain-raw-u-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+
+  double-quoted-b-string:
+    # Single-line string, bytes
+    - match: ([bB])(")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.gdscript punctuation.definition.string.begin.gdscript
+      set: double-quoted-b-string-body
+
+  double-quoted-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.gdscript
+    - include: double-quoted-string-end
+    - include: double-quoted-b-string-content
+
+  double-quoted-b-string-content:
+    - include: string-prototype
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: double-quoted-string-replacements
+
+  double-quoted-f-string:
+    # Single-line f-string
+    - match: ([fF])(")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.gdscript punctuation.definition.string.begin.gdscript
+      set: double-quoted-f-string-body
+
+  double-quoted-f-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.gdscript
+    - include: double-quoted-string-end
+    - include: double-quoted-f-string-content
+
+  double-quoted-f-string-content:
+    - include: string-prototype
+    - include: double-quoted-f-string-replacements
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+
+  double-quoted-u-string:
+    - match: ([uU]?)(")
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.double.gdscript punctuation.definition.string.begin.gdscript
+      set: double-quoted-u-string-body
+
+  double-quoted-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.gdscript
+    - include: double-quoted-string-end
+    - include: double-quoted-u-string-syntax
+
+  double-quoted-u-string-syntax:
+    # Single-line string, unicode or not
+    - match: (?=\S)
+      set: double-quoted-plain-u-string-body
+
+  double-quoted-plain-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.double.gdscript
+    - include: double-quoted-string-end
+    - include: double-quoted-u-string-content
+
+  double-quoted-u-string-content:
+    - include: string-prototype
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: double-quoted-string-replacements
+
+  double-quoted-string-replacements:
+    - include: escaped-string-braces
+    - match: (?=\{)
+      branch_point: double-quoted-string-replacement
+      branch:
+        - double-quoted-string-replacement
+        - string-replacement-fallback
+
+  double-quoted-string-replacement:
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      set: double-quoted-string-replacement-body
+
+  double-quoted-string-replacement-body:
+    - meta_scope: constant.other.placeholder.gdscript
+    - include: string-replacement-body
+    - match: \[
+      scope: punctuation.section.brackets.begin.gdscript
+      push: double-quoted-string-replacement-brackets-body
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      push: double-quoted-string-replacement-formatspec-body
+    - match: (?!\w) # restrict field names to reduce risk of false positives
+      fail: double-quoted-string-replacement
+
+  double-quoted-string-replacement-brackets-body:
+    - include: string-replacement-brackets-body
+    - include: double-quoted-string-replacement-fail
+
+  double-quoted-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: string-replacement-formatspec-body
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      push: double-quoted-string-replacement-body
+    - include: double-quoted-string-replacement-fail
+
+  double-quoted-string-replacement-fail:
+    - match: (?="|$)
+      fail: double-quoted-string-replacement
+
+  double-quoted-f-string-replacements:
+    - include: f-string-replacements
+    - match: \{
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-meta
+        - double-quoted-f-string-replacement-formatspec
+        - double-quoted-f-string-replacement-expression
+
+  double-quoted-f-string-replacements-regexp:
+    # Same as f-string-replacements, but will reset the entire scope stack.
+    - include: f-string-replacements-regexp
+    - match: '{{fstring_regexp_interpolation_begin}}'
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-regexp-meta
+        - double-quoted-f-string-replacement-formatspec
+        - double-quoted-f-string-replacement-expression
+
+  double-quoted-f-string-replacement-expression:
+    - meta_content_scope: source.gdscript.embedded
+    - include: f-string-replacement-expression
+    - include: eol-pop
+
+  double-quoted-f-string-replacement-formatspec:
+    - meta_include_prototype: false
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      set: double-quoted-f-string-replacement-formatspec-body
+    - include: double-quoted-f-string-replacement-end
+
+  double-quoted-f-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: double-quoted-f-string-replacement-end
+    - include: double-quoted-f-string-replacements
+
+  double-quoted-f-string-replacement-end:
+    - include: f-string-replacement-end
+    - match: (?="|$)
+      pop: 2
+
+###[ TRIPLE SINGLE QUOTED STRINGS ]###########################################
+
+  triple-single-quoted-string:
+    - include: triple-single-quoted-plain-raw-b-string
+    - include: triple-single-quoted-plain-raw-f-string
+    - include: triple-single-quoted-plain-raw-u-string
+    - include: triple-single-quoted-b-string
+    - include: triple-single-quoted-f-string
+    - include: triple-single-quoted-u-string
+
+  triple-single-quoted-string-end:
+    - match: "'''"
+      scope: meta.string.gdscript string.quoted.single.block.gdscript punctuation.definition.string.end.gdscript
+      set: after-expression
+
+  triple-single-quoted-string-pop:
+    - match: (?=''')
+      pop: 1
+
+  triple-single-quoted-plain-raw-b-string:
+    # Triple-quoted capital R raw string, bytes, no syntax embedding
+    - match: ([bB]R|R[bB])(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-single-quoted-plain-raw-b-string-body
+
+  triple-single-quoted-plain-raw-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.block.gdscript
+    - include: triple-single-quoted-string-end
+    - include: triple-single-quoted-plain-raw-b-string-content
+
+  triple-single-quoted-plain-raw-b-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+
+  triple-single-quoted-plain-raw-f-string:
+    # Triple-quoted raw f-string
+    - match: ([fF]R|R[fF])(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-single-quoted-plain-raw-f-string-body
+
+  triple-single-quoted-plain-raw-f-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.block.gdscript
+    - include: triple-single-quoted-string-end
+    - include: triple-single-quoted-plain-raw-f-string-content
+
+  triple-single-quoted-plain-raw-f-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+    - include: triple-single-quoted-f-string-replacements
+
+  triple-single-quoted-plain-raw-u-string:
+    # Triple-quoted capital R raw string, unicode or not, no syntax embedding
+    - match: ([uU]?R)(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-single-quoted-plain-raw-u-string-body
+
+  triple-single-quoted-plain-raw-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.block.gdscript
+    - include: triple-single-quoted-string-end
+    - include: triple-single-quoted-plain-raw-u-string-content
+
+  triple-single-quoted-plain-raw-u-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+
+  triple-single-quoted-b-string:
+    # Triple-quoted string, bytes, no syntax embedding
+    - match: ([bB])(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-single-quoted-b-string-body
+
+  triple-single-quoted-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.block.gdscript
+    - include: triple-single-quoted-string-end
+    - include: triple-single-quoted-b-string-content
+
+  triple-single-quoted-b-string-content:
+    - include: string-prototype
+    - include: string-continuations
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: triple-single-quoted-string-replacements
+
+  triple-single-quoted-f-string:
+    # Triple-quoted f-string
+    - match: ([fF])(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-single-quoted-f-string-body
+
+  triple-single-quoted-f-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.block.gdscript
+    - include: triple-single-quoted-string-end
+    - include: triple-single-quoted-f-string-content
+
+  triple-single-quoted-f-string-content:
+    - include: string-prototype
+    - include: string-continuations
+    - include: triple-single-quoted-f-string-replacements
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+
+  triple-single-quoted-u-string:
+    # Triple-quoted string, unicode or not, will detect SQL
+    - match: ([uU]?)(''')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.block.gdscript punctuation.definition.string.begin.gdscript
+      set: triple-single-quoted-u-string-body
+
+  triple-single-quoted-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.block.gdscript
+    - include: triple-single-quoted-string-end
+    - include: string-continuations
+    - include: triple-single-quoted-u-string-syntax
+
+  triple-single-quoted-u-string-syntax:
+    - match: (?=\S)
+      set: single-quoted-plain-u-block-string-body
+
+  single-quoted-plain-u-block-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.block.gdscript
+    - include: triple-single-quoted-string-end
+    - include: triple-single-quoted-u-string-content
+
+  triple-single-quoted-u-string-content:
+    - include: string-prototype
+    - include: string-continuations
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: triple-single-quoted-string-replacements
+
+  triple-single-quoted-string-replacements:
+    - include: escaped-string-braces
+    - match: (?=\{)
+      branch_point: triple-single-quoted-string-replacement
+      branch:
+        - triple-single-quoted-string-replacement
+        - string-replacement-fallback
+
+  triple-single-quoted-string-replacement:
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      set: triple-single-quoted-string-replacement-body
+
+  triple-single-quoted-string-replacement-body:
+    - meta_scope: constant.other.placeholder.gdscript
+    - include: string-replacement-body
+    - match: \[
+      scope: punctuation.section.brackets.begin.gdscript
+      push: triple-single-string-replacement-brackets-body
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      push: triple-single-quoted-string-replacement-formatspec-body
+    - match: (?!\w) # restrict field names to reduce risk of false positives
+      fail: triple-single-quoted-string-replacement
+
+  triple-single-string-replacement-brackets-body:
+    - include: string-replacement-brackets-body
+    - include: triple-single-quoted-string-replacement-fail
+
+  triple-single-quoted-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: string-replacement-formatspec-body
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      push: triple-single-quoted-string-replacement-body
+    - include: triple-single-quoted-string-replacement-fail
+
+  triple-single-quoted-string-replacement-fail:
+    - match: (?='''|$)
+      fail: triple-single-quoted-string-replacement
+
+  triple-single-quoted-f-string-replacements:
+    - include: f-string-replacements
+    - match: \{
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-meta
+        - triple-single-quoted-f-string-replacement-formatspec
+        - triple-single-quoted-f-string-replacement-expression
+
+  triple-single-quoted-f-string-replacements-regexp:
+    # Same as f-string-replacements, but will reset the entire scope stack.
+    - include: f-string-replacements-regexp
+    - match: '{{fstring_regexp_interpolation_begin}}'
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-regexp-meta
+        - triple-single-quoted-f-string-replacement-formatspec
+        - triple-single-quoted-f-string-replacement-expression
+
+  triple-single-quoted-f-string-replacement-expression:
+    - meta_content_scope: source.gdscript.embedded
+    - include: f-string-replacement-expression
+
+  triple-single-quoted-f-string-replacement-formatspec:
+    - meta_include_prototype: false
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      set: triple-single-quoted-f-string-replacement-formatspec-body
+    - include: triple-single-quoted-f-string-replacement-end
+
+  triple-single-quoted-f-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: triple-single-quoted-f-string-replacement-end
+    - include: triple-single-quoted-f-string-replacements
+
+  triple-single-quoted-f-string-replacement-end:
+    - include: f-string-replacement-end
+    - match: (?=''')
+      pop: 2
+
+###[ SINGLE QUOTED STRINGS ]##################################################
+
+  single-quoted-strings:
+    - match: (?={{string_prefix}}'(?!'))
+      push: single-quoted-string
+
+  single-quoted-string:
+    - meta_include_prototype: false
+    - include: single-quoted-plain-raw-b-string
+    - include: single-quoted-plain-raw-f-string
+    - include: single-quoted-plain-raw-u-string
+    - include: single-quoted-b-string
+    - include: single-quoted-f-string
+    - include: single-quoted-u-string
+
+  single-quoted-string-end:
+    - match: "'"
+      scope: meta.string.gdscript string.quoted.single.gdscript punctuation.definition.string.end.gdscript
+      set: after-expression
+    - match: \n
+      scope: meta.string.gdscript string.quoted.single.gdscript invalid.illegal.unclosed-string.gdscript
+      set: after-expression
+    - include: string-continuations
+
+  single-quoted-string-pop:
+    - match: (?='|\n)
+      pop: 1
+    - include: string-continuations
+
+  single-quoted-plain-raw-b-string:
+    # Single-line capital R raw string, bytes, no syntax embedding
+    - match: ([bB]R|R[bB])(')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.gdscript punctuation.definition.string.begin.gdscript
+      set: single-quoted-plain-raw-b-string-body
+
+  single-quoted-plain-raw-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.gdscript
+    - include: single-quoted-string-end
+    - include: single-quoted-plain-raw-b-string-content
+
+  single-quoted-plain-raw-b-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+
+  single-quoted-plain-raw-u-string:
+    # Single-line capital R raw string, unicode or not, no syntax embedding
+    - match: ([uU]?R)(')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.gdscript punctuation.definition.string.begin.gdscript
+      set: single-quoted-plain-raw-u-string-body
+
+  single-quoted-plain-raw-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.gdscript
+    - include: single-quoted-string-end
+    - include: single-quoted-plain-raw-u-string-content
+
+  single-quoted-plain-raw-u-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+
+  single-quoted-plain-raw-f-string:
+    # Single-line raw f-string
+    - match: ([fF]R|R[fF])(')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.gdscript punctuation.definition.string.begin.gdscript
+      set: single-quoted-plain-raw-f-string-body
+
+  single-quoted-plain-raw-f-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.gdscript
+    - include: single-quoted-string-end
+    - include: single-quoted-plain-raw-f-string-content
+
+  single-quoted-plain-raw-f-string-content:
+    - include: string-prototype
+    - include: escaped-raw-quotes
+    - include: single-quoted-f-string-replacements
+
+  single-quoted-b-string:
+    # Single-line string, bytes
+    - match: ([bB])(')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.gdscript punctuation.definition.string.begin.gdscript
+      set: single-quoted-b-string-body
+
+  single-quoted-b-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.gdscript
+    - include: single-quoted-string-end
+    - include: single-quoted-b-string-content
+
+  single-quoted-b-string-content:
+    - include: string-prototype
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: single-quoted-string-replacements
+
+  single-quoted-f-string:
+    # Single-line f-string
+    - match: ([fF])(')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.gdscript punctuation.definition.string.begin.gdscript
+      set: single-quoted-f-string-body
+
+  single-quoted-f-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.gdscript
+    - include: single-quoted-string-end
+    - include: single-quoted-f-string-content
+
+  single-quoted-f-string-content:
+    - include: string-prototype
+    - include: single-quoted-f-string-replacements
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+
+  single-quoted-u-string:
+    - match: ([uU]?)(')
+      captures:
+        1: storage.type.string.gdscript
+        2: meta.string.gdscript string.quoted.single.gdscript punctuation.definition.string.begin.gdscript
+      set: single-quoted-u-string-body
+
+  single-quoted-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.gdscript
+    - include: single-quoted-string-end
+    - include: single-quoted-u-string-syntax
+
+  single-quoted-u-string-syntax:
+    # Single-line string, unicode or not
+    - match: (?=\S)
+      set: single-quoted-plain-u-string-body
+
+  single-quoted-plain-u-string-body:
+    - meta_include_prototype: false
+    - meta_content_scope: meta.string.gdscript string.quoted.single.gdscript
+    - include: single-quoted-string-end
+    - include: single-quoted-u-string-content
+
+  single-quoted-u-string-content:
+    - include: string-prototype
+    - include: escaped-unicode-chars
+    - include: escaped-chars
+    - include: string-placeholders
+    - include: single-quoted-string-replacements
+
+  single-quoted-string-replacements:
+    - include: escaped-string-braces
+    - match: (?=\{)
+      branch_point: single-quoted-string-replacement
+      branch:
+        - single-quoted-string-replacement
+        - string-replacement-fallback
+
+  single-quoted-string-replacement:
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      set: single-quoted-string-replacement-body
+
+  single-quoted-string-replacement-body:
+    - meta_scope: constant.other.placeholder.gdscript
+    - include: string-replacement-body
+    - match: \[
+      scope: punctuation.section.brackets.begin.gdscript
+      push: single-string-replacement-brackets-body
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      push: single-quoted-string-replacement-formatspec-body
+    - match: (?!\w) # restrict field names to reduce risk of false positives
+      fail: single-quoted-string-replacement
+
+  single-string-replacement-brackets-body:
+    - include: string-replacement-brackets-body
+    - include: single-quoted-string-replacement-fail
+
+  single-quoted-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: string-replacement-formatspec-body
+    - match: \{
+      scope: punctuation.definition.placeholder.begin.gdscript
+      push: single-quoted-string-replacement-body
+    - include: single-quoted-string-replacement-fail
+
+  single-quoted-string-replacement-fail:
+    - match: (?='|$)
+      fail: single-quoted-string-replacement
+
+  single-quoted-f-string-replacements:
+    - include: f-string-replacements
+    - match: \{
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-meta
+        - single-quoted-f-string-replacement-formatspec
+        - single-quoted-f-string-replacement-expression
+
+  single-quoted-f-string-replacements-regexp:
+    # Same as f-string-replacements, but will reset the entire scope stack.
+    - include: f-string-replacements-regexp
+    - match: '{{fstring_regexp_interpolation_begin}}'
+      scope: punctuation.section.interpolation.begin.gdscript
+      push:
+        - f-string-replacement-regexp-meta
+        - single-quoted-f-string-replacement-formatspec
+        - single-quoted-f-string-replacement-expression
+
+  single-quoted-f-string-replacement-expression:
+    - meta_content_scope: source.gdscript.embedded
+    - include: f-string-replacement-expression
+    - include: eol-pop
+
+  single-quoted-f-string-replacement-formatspec:
+    - meta_include_prototype: false
+    - match: ':'
+      scope: punctuation.separator.format-spec.gdscript
+      set: single-quoted-f-string-replacement-formatspec-body
+    - include: single-quoted-f-string-replacement-end
+
+  single-quoted-f-string-replacement-formatspec-body:
+    - meta_content_scope: meta.format-spec.gdscript constant.other.format-spec.gdscript
+    - include: single-quoted-f-string-replacement-end
+    - include: single-quoted-f-string-replacements
+
+  single-quoted-f-string-replacement-end:
+    - include: f-string-replacement-end
+    - match: (?='|$)
+      pop: 2
+
+###[ STRING CONTENTS ]########################################################
+
+  string-continuations:
+    - match: \\$
+      scope: punctuation.separator.continuation.line.gdscript
+      push:
+        - meta_include_prototype: false
+        - match: ^
+          pop: 1
+
+  escaped-chars:
+    - match: \\x\h{2}
+      scope: constant.character.escape.hex.gdscript
+    - match: \\[0-7]{1,3}
+      scope: constant.character.escape.octal.gdscript
+    - match: \\[\\"'abfnrtv]
+      scope: constant.character.escape.gdscript
+    - match: \\.  # deprecated in 3.6 and will eventually be a syntax error
+      scope: invalid.deprecated.character.escape.gdscript
+
+  escaped-unicode-chars:
+    - match: \\u\h{4}
+      scope: constant.character.escape.unicode.16bit.gdscript
+    - match: \\U\h{8}
+      scope: constant.character.escape.unicode.32bit.gdscript
+    - match: \\N\{[-a-zA-Z ]+\}
+      scope: constant.character.escape.unicode.name.gdscript
+
+  escaped-raw-quotes:
+    # consume escaped quotes in raw-strings to preven them terminating strings
+    # but don't scope them as escapes as they are treated literal
+    - match: \\[\\'"]
+
+  escaped-string-braces:
+    - match: \{\{|\}\}
+      scope: constant.character.escape.gdscript
+
+  string-placeholders:
+    - match: |- # printf style
+        (?x)
+        %
+          ( \( ({{identifier}}) \) )? # mapping key
+          \#?            # alternate form
+          0?             # pad with zeros
+          \-?            # left-adjust
+          \ ?            # implicit sign
+          [+-]?          # sign
+          (\d*|\*)       # width
+          (\. (\d*|\*))? # precision
+          [hlL]?         # length modifier (but ignored)
+          [acdeEfFgGiorsuxX%]
+      scope: constant.other.placeholder.gdscript
+      captures:
+        2: variable.other.placeholder.gdscript
+    - match: '{{strftime_spec}}'
+      scope: constant.other.placeholder.gdscript
+
+  string-replacement-body:
+    - match: \}
+      scope: punctuation.definition.placeholder.end.gdscript
+      pop: 1
+    - match: \.
+      scope: punctuation.accessor.dot.gdscript
+    - match: '![ars]\b'
+      scope: storage.modifier.conversion.gdscript
+    - include: escaped-chars
+
+  string-replacement-brackets-body:
+    - meta_scope: meta.brackets.gdscript
+    - match: \]
+      scope: punctuation.section.brackets.end.gdscript
+      pop: 1
+    - include: eol-pop
+    - include: escaped-chars
+
+  string-replacement-formatspec-body:
+    - match: \}
+      scope: punctuation.definition.placeholder.end.gdscript
+      pop: 2
+    - include: escaped-chars
+
+  string-replacement-fallback:
+    - match: \{
+      pop: 1
+
+  f-string-replacements:
+    # https://peps.gdscript.org/pep-0498
+    # https://peps.gdscript.org/pep-0701
+    # https://docs.gdscript.org/3.6/reference/lexical_analysis.html#f-strings
+    - match: (\\)?(?:\{\{|\}\})
+      scope: constant.character.escape.gdscript
+      captures:
+        1: invalid.deprecated.character.escape.gdscript
+    - include: invalid-f-string-replacements
+
+  f-string-replacement-meta:
+    - clear_scopes: 1
+    - meta_include_prototype: false
+    - meta_scope: meta.interpolation.gdscript
+    - include: immediately-pop
+
+  f-string-replacements-regexp:
+    # Same as f-string-replacements, but will reset the entire scope stack
+    # and has an additional match.
+    - match: \\?(\{\{|\}\})
+      scope: constant.character.escape.regexp
+      captures:
+        1: constant.character.escape.gdscript
+    - include: invalid-f-string-replacements
+
+  f-string-replacement-regexp-meta:
+    # Same as f-string-replacement, but with clear_scopes: true
+    - clear_scopes: true
+    - meta_include_prototype: false
+    - meta_scope: source.gdscript meta.string.gdscript meta.interpolation.gdscript
+    - include: immediately-pop
+
+  f-string-replacement-expression:
+    - match: (?:\s*(=)\s*)?(![ars])?(?=[:}])
+      captures:
+        1: storage.modifier.debug.gdscript
+        2: storage.modifier.conversion.gdscript
+      pop: 1
+    - match: \\
+      scope: invalid.illegal.backslash-in-fstring.gdscript
+    - include: expression-in-a-sequence
+
+  f-string-replacement-end:
+    - match: \}
+      scope: punctuation.section.interpolation.end.gdscript
+      pop: 2
+
+  invalid-f-string-replacements:
+    - match: \{\s*\}
+      scope: invalid.illegal.empty-expression.gdscript
+    - include: illegal-stray-braces
+
+  # for use by inheriting syntaxes to easily inject string interpolation
+  # in any kind of quoted or unquoted string
+  string-prototype: []
+
+###[ PROTOTYPES ]#############################################################
+
+  after-expression:
+    - match: \s*(?=\()
+      set: function-call-argument-list
+    - match: \s*(?=\[)
+      set: item-access
+    - match: \s*(\\)\s*$
       captures:
         1: punctuation.separator.continuation.line.gdscript
-        2: invalid.illegal.unexpected-text.gdscript
-    # Python syntax has special handling for docstrings here
+      push: line-continuation-body
+    - include: immediately-pop
+
+  else-pop:
+    - match: (?=\S)
+      pop: 1
+
+  eol-pop:
+    - match: $
+      pop: 1
+
+  immediately-pop:
+    - match: ''
+      pop: 1
+
+  line-continuation-or-pop:
+    - include: line-continuations
+    - match: (?=\s*[\n;#])
+      pop: 1
+
+  line-continuations:
+    - match: (\\)\s*$
+      captures:
+        1: punctuation.separator.continuation.line.gdscript
+      push: line-continuation-body
+
+  line-continuation-body:
+    - meta_include_prototype: false
+    # This prevents strings after a continuation from being a docstring
+    - include: triple-double-quoted-string
+    - include: triple-single-quoted-string
+    - match: ^(?!\s*{{string_prefix}}['"]{3})
+      pop: 1
