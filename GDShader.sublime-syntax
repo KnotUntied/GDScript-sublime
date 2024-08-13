@@ -1,0 +1,75 @@
+%YAML 1.2
+---
+name: GDShader
+scope: source.gdshader
+version: 2
+
+file_extensions:
+  - gdshader
+
+contexts:
+  main:
+    - match: ''
+      push: [any]
+      # push: any
+
+  any:
+    - include: comment
+    # - include: enclosed
+    # - include: classifier
+    # - include: definition
+    # - include: keyword
+    # - include: element
+    - include: separator
+    - include: operator
+
+  comment:
+    - include: comment-line
+    - include: comment-block
+
+  comment-line:
+    - match: //
+      scope: punctuation.definition.comment.gdshader
+      push:
+        - meta_scope: comment.line.double-slash.gdshader
+        - match: $\n?
+          pop: true
+
+  comment-block:
+    # - scope: comment.block.gdshader
+    - match: /\*
+      scope: punctuation.definition.comment.gdshader
+      push:
+        - meta_scope: comment.block.gdshader
+        - match: \*/
+          pop: true
+
+  separator:
+    - include: separator-comma
+
+  separator-comma:
+    - meta_scope: punctuation.separator.comma.gdshader
+    - match: \[,\]
+
+  operator:
+    - match: (?:\+\+|--)
+      scope: keyword.operator.arithmetic.gdshader
+    - match: '->'
+      scope: punctuation.accessor.gdshader
+    - match: \+\=|-\=|\*\=|/\=|%\=|&\=|\|\=|\^\=|>>\=|<<\=
+      scope: keyword.operator.assignment.augmented.gdshader
+    - match: <<|>>|&&|\|\|
+      scope: keyword.operator.arithmetic.gdshader
+    - match: <\=|>\=|\=\=|<|>|\!\=
+      scope: keyword.operator.gdshaderomparison.gdshader
+    - match: \+|\-|/|%|\||\^|~|!
+      scope: keyword.operator.arithmetic.gdshader
+    - match: \*|&
+      scope: keyword.operator.gdshader
+    - match: \=
+      scope: keyword.operator.assignment.gdshader
+    - match: '\?|:(?!:)'
+      scope: keyword.operator.ternary.gdshader
+    - match: '\.\.\.'
+      scope: keyword.operator.variadic.gdshader
+

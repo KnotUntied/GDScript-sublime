@@ -1,7 +1,9 @@
 GDScript support for Sublime Text
 =================================
 
+No guarantees that this will ever be in a usable state.
+
 Installation
 ------------
 
-Install "GDScript (Godot Engine)" from [Sublime Package Control](https://github.com/beefsack/GDScript-sublime), or clone this repository into your Packages directory for Sublime Text.
+Clone this repository into your Packages directory for Sublime Text.
