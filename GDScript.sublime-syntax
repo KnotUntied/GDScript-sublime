@@ -15,7 +15,7 @@ variables:
   digits: (?:\d+(?:_\d+)*)
   exponent: (?:[eE][-+]?{{digits}})
   path: '({{identifier}}[ ]*\.[ ]*)*{{identifier}}'
-  illegal_names: (?:and|as|assert|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|not|or|pass|raise|return|try|while|with|yield)
+  illegal_names: (?:and|as|assert|break|class|continue|del|elif|else|except|finally|for|from|func|global|if|import|in|is|lambda|not|or|pass|raise|return|try|while|with|yield)
 
   strftime_spec: (?:%(?:[aAwdbBGmyYHIpMSfzZjuUVWcxX%]|-[dmHIMSj]))
 
@@ -30,21 +30,6 @@ variables:
 
   # Prefer ranged quantifiers over python interpolation in raw f-strings
   fstring_regexp_interpolation_begin: '\{(?!\d+(?:,\d*)?\})'
-
-  builtin_functions: |-
-    (?x:
-      __import__ | all | abs | any | ascii | bin | callable | chr | classmethod
-    | compile | delattr | dir | divmod | enumerate | eval | filter | format
-    | getattr | globals | hasattr | hash | help | hex | id | input | isinstance
-    | issubclass | iter | len | locals | map | max | min | next | oct | open
-    | ord | pow | property | range | repr | reversed | round | setattr | sorted
-    | staticmethod | sum | super | type(?=\s*\() | vars | zip
-    # Python 2 functions
-    | apply | cmp | coerce | execfile | intern | raw_input | reduce | reload
-    | unichr | xrange
-    # Python 3 functions
-    | aiter| anext| breakpoint | exec | print
-    )\b
 
   builtin_types: |-
     (?x:
@@ -114,17 +99,12 @@ variables:
     | long  # py2
     # other "coercion"
     | format | len | length_hint | hash | repr | reversed
-    | coerce | hex | oct  # py2
+    | coerce | hex
     | fspath
     # iterator (and 'await')
     | iter | next
     | aiter | anext
     | await
-    # attribute and item access
-    | delattr | delitem | delslice
-    | getattr | getattribute | getitem | getslice
-    | setattr | setitem | setslice
-    | dir | missing
     # context manager
     | enter | exit
     | aenter | aexit
@@ -147,16 +127,8 @@ variables:
     (?x: __(?:
     # generic object
     class | dict | doc | module | name
-    # module-specific / global
-    | all | file | package
     # functions & methods
-    | annotations | closure | code | defaults | func | globals | kwdefaults | self | qualname
-    # classes (attributes)
-    | bases | prepare | slots | metaclass | mro
-    # Python 2
-    | members | methods
-    # Python 3.12 (PEP 698)
-    | override
+    | defaults | globals | self
     )__\b )
 
 ##############################################################################
@@ -716,7 +688,7 @@ contexts:
 ###[ FUNCTION DEFINITIONS ]###################################################
 
   function-definitions:
-    - match: ^\s*(?:(async)\s+)?(def)\b
+    - match: ^\s*(?:(async)\s+)?(func)\b
       scope: meta.function.gdscript
       captures:
         1: keyword.declaration.async.gdscript
@@ -2227,8 +2199,6 @@ contexts:
     - include: illegal-names
 
   builtin-functions:
-    - match: '{{builtin_functions}}'
-      scope: support.function.builtin.gdscript
     - match: '{{typing_functions}}'
       scope: support.function.typing.gdscript
 
