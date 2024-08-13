@@ -2,7 +2,7 @@
 ---
 name: GDScript
 scope: source.gdscript
-version: 4
+version: 2
 
 file_extensions:
   - gd
@@ -2240,16 +2240,16 @@ contexts:
 
   magic-functions:
     # these methods have magic interpretation by python and are generally called indirectly through syntactic constructs
-    # https://docs.gdscript.org/2/reference/datamodel.html
-    # https://docs.gdscript.org/3/reference/datamodel.html
+    # https://docs.python.org/2/reference/datamodel.html
+    # https://docs.python.org/3/reference/datamodel.html
     - match: '{{magic_functions}}'
       scope: support.function.magic.gdscript
 
   magic-variables:
     # magic variables which a class/module/object may have.
-    # https://docs.gdscript.org/3/library/inspect.html#types-and-members
-    # https://docs.gdscript.org/3/reference/datamodel.html#object.__slots__
-    # https://docs.gdscript.org/3/reference/datamodel.html#preparing-the-class-namespace
+    # https://docs.python.org/3/library/inspect.html#types-and-members
+    # https://docs.python.org/3/reference/datamodel.html#object.__slots__
+    # https://docs.python.org/3/reference/datamodel.html#preparing-the-class-namespace
     - match: '{{magic_variables}}'
       scope: support.variable.magic.gdscript
 
@@ -2313,20 +2313,20 @@ contexts:
       scope: constant.language.gdscript
 
   booleans:
-    - match: False\b
+    - match: false\b
       scope: constant.language.boolean.false.gdscript
       push: illegal-assignment
-    - match: True\b
+    - match: true\b
       scope: constant.language.boolean.true.gdscript
       push: illegal-assignment
 
   nones:
-    - match: None\b
+    - match: null\b
       scope: constant.language.null.gdscript
       push: illegal-assignment
 
   numbers:
-    # https://docs.gdscript.org/3/reference/lexical_analysis.html#numeric-literals
+    # https://docs.python.org/3/reference/lexical_analysis.html#numeric-literals
     # hexadecimal
     - match: (0[xX])(\h*)([lL]) # py2
       scope: meta.number.integer.hexadecimal.gdscript
@@ -3557,7 +3557,7 @@ contexts:
   f-string-replacements:
     # https://peps.gdscript.org/pep-0498
     # https://peps.gdscript.org/pep-0701
-    # https://docs.gdscript.org/3.6/reference/lexical_analysis.html#f-strings
+    # https://docs.python.org/3.6/reference/lexical_analysis.html#f-strings
     - match: (\\)?(?:\{\{|\}\})
       scope: constant.character.escape.gdscript
       captures:
