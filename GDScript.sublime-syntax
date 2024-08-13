@@ -31,14 +31,17 @@ variables:
   # Prefer ranged quantifiers over python interpolation in raw f-strings
   fstring_regexp_interpolation_begin: '\{(?!\d+(?:,\d*)?\})'
 
-  builtin_types: |-
+  builtin_classes: |-
     (?x:
-      bool | bytearray | bytes | complex | dict | float | frozenset | int
-    | list | memoryview | object | set | slice | str | tuple
-    # Python 2 types
-    | basestring | long | unicode
-    # Python 2 types prone to conflicts
-    # | buffer | file
+      OS | GDScript | Vector2 | Vector2i | Vector3 | Vector3i | Color | Rect2
+    | Rect2i | Array | Basis | Dictionary | Plane | Quat | RID | Rect3
+    | Transform | Transform2D | Transform3D | AABB | String | Color | NodePath
+    | Object | PoolByteArray | PoolIntArray | PoolRealArray | PoolStringArray
+    | PoolVector2Array | PoolVector3Array | PoolColorArray | bool | int | float
+    | StringName | Quaternion | PackedByteArray | PackedInt32Array
+    | PackedInt64Array | PackedFloat32Array | PackedFloat64Array
+    | PackedStringArray | PackedVector2Array | PackedVector2iArray
+    | PackedVector3Array | PackedVector3iArray | PackedColorArray | super
     )\b
 
   typing_functions: |-
@@ -47,32 +50,6 @@ variables:
     | get_args | get_origin | get_overloads | get_type_hints | is_typeddict
     | no_type_check | no_type_check_decorator | overload | override | reveal_type
     | runtime_checkable
-    )\b
-
-  typing_types: |-
-    (?x:
-    # Super-special typing primitives.
-      Annotated | Any | Callable | ClassVar | Concatenate | Final | ForwardRef
-    | Generic | Literal | Optional | ParamSpec | Protocol | Tuple | Type
-    | TypeVar | TypeVarTuple | Union
-    # ABCs (from collections.abc).
-    | AbstractSet | ByteString | Container | ContextManager | Hashable | ItemsView
-    | Iterable | Iterator | KeysView | Mapping | MappingView | MutableMapping
-    | MutableSequence | MutableSet | Sequence | Sized | ValuesView | Awaitable
-    | AsyncIterator | AsyncIterable | Coroutine | Collection | AsyncGenerator
-    | AsyncContextManager
-    # Structural checks, a.k.a. protocols.
-    | Reversible | SupportsAbs | SupportsBytes | SupportsComplex | SupportsFloat
-    | SupportsIndex | SupportsInt | SupportsRound
-    # Concrete collection types.
-    | ChainMap | Counter | Deque | Dict | DefaultDict | List | OrderedDict
-    | Set | FrozenSet | NamedTuple | TypedDict | Generator
-    # Other concrete types.
-    | BinaryIO | IO | Match | Pattern | TextIO
-    # One-off things.
-    | AnyStr | LiteralString | Never | NewType | NoReturn | NotRequired
-    | ParamSpecArgs | ParamSpecKwargs | Required | Self | Text | TypeAlias
-    | TypeGuard | Unpack
     )\b
 
   magic_functions: |-
@@ -370,7 +347,7 @@ contexts:
     - include: constants
     - include: double-quoted-strings
     - include: single-quoted-strings
-    - include: builtin-types
+    - include: builtin-classes
     - include: qualified-name
 
   type-hint-lists:
@@ -1158,14 +1135,14 @@ contexts:
 
   qualified-case-pattern-class-name:
     - meta_content_scope: meta.function-call.identifier.gdscript meta.path.gdscript
-    - include: builtin-types
+    - include: builtin-classes
     - include: illegal-names
     - include: class-names
     - include: immediately-pop
 
   unqualified-case-pattern-class-name:
     - meta_scope: meta.function-call.identifier.gdscript
-    - include: builtin-types
+    - include: builtin-classes
     - include: illegal-names
     - include: class-names
     - include: immediately-pop
@@ -2186,7 +2163,7 @@ contexts:
 
   name-specials:
     - include: builtin-functions
-    - include: builtin-types
+    - include: builtin-classes
     - include: magic-functions
     - include: magic-variables
     - include: class-variables
@@ -2202,11 +2179,9 @@ contexts:
     - match: '{{typing_functions}}'
       scope: support.function.typing.gdscript
 
-  builtin-types:
-    - match: '{{builtin_types}}'
+  builtin-classes:
+    - match: '{{builtin_classes}}'
       scope: support.type.gdscript
-    - match: '{{typing_types}}'
-      scope: support.class.typing.gdscript
 
   magic-functions:
     # these methods have magic interpretation by python and are generally called indirectly through syntactic constructs
