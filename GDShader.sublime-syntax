@@ -11,15 +11,14 @@ contexts:
   main:
     - match: ''
       push: [any]
-      # push: any
 
   any:
     - include: comment
-    # - include: enclosed
-    # - include: classifier
-    # - include: definition
-    # - include: keyword
-    # - include: element
+    - include: enclosed
+    - include: classifier
+    - include: definition
+    - include: keyword
+    - include: element
     - include: separator
     - include: operator
 
@@ -36,7 +35,6 @@ contexts:
           pop: true
 
   comment-block:
-    # - scope: comment.block.gdshader
     - match: /\*
       scope: punctuation.definition.comment.gdshader
       push:
@@ -44,12 +42,212 @@ contexts:
         - match: \*/
           pop: true
 
+  # TODO Comply with https://www.sublimetext.com/docs/scope_naming.html
+  enclosed:
+    - match: \(
+      scope: punctuation.parenthesis.gdshader
+      push:
+        - meta_scope: meta.parenthesis.gdshader
+        - match: \)
+        - include: any
+
+  classifier:
+    - match: (?=\b(?:shader_type|render_mode)\b)
+      push:
+        - meta_scope: meta.classifier.gdshader
+        - include: comment
+        - include: keyword
+        - include: identifier-classification
+        - include: separator
+        - match: (?<=;)
+          pop: true
+
+  classifier-keyword:
+    - match: \b(?:shader_type|render_mode)\b
+      scope: keyword.language.classifier.gdshader
+
+  identifier-classification:
+    - match: \b[a-z_]+\b
+      scope: entity.other.inherited-class.gdshader
+
+  definition:
+    - include: struct-definition
+
+  array-size:
+    - match: \[
+      push:
+        - include: comment
+        - include: keyword
+        - include: element
+        - include: separator
+        - match: \]
+          scope: meta.array-size.gdshader
+          captures:
+            0: punctuation.bracket.gdshader
+          pop: true
+
+  struct-definition:
+    - match: (?=\b(?:struct)\b)
+      push:
+        - include: comment
+        - include: keyword
+        - include: struct-name
+        - include: struct-definition-block
+        - include: separator
+        - match: (?<=;)
+          pop: true
+
+  struct-keyword:
+    - match: \b(?:struct)\b
+      scope: keyword.other.struct.gdshader
+
+  struct-name:
+    - match: \b[a-zA-Z_]\w*\b
+      scope: entity.name.type.struct.gdshader
+
+  struct-definition-block:
+    - match: \{
+      scope: meta.definition.block.struct.gdshader
+      push:
+        - include: comment
+        - include: precision-keyword
+        # - include: field-definition
+        - include: keyword
+        - include: any
+        - match: \},
+          captures:
+            0: punctuation.definition.block.struct.gdshader
+          pop: true
+
+  # field-definition:
+  #   - match: \b[a-zA-Z_]\w*\b
+  #     scope: meta.definition.field.gdshader
+  #     captures:
+  #       0:
+  #         - include: type-keyword
+  #         - match: .+
+  #           scope: entity.name.type.gdshader
+  #     push:
+  #       - include: comment
+  #       - include: keyword
+  #       - include: array-size
+  #       - include: field-name
+  #       - include: any
+  #       - match: (?<=;)
+  #         pop: true
+
+  field-name:
+    - match: \b[a-zA-Z_]\w*\b
+      scope: entity.name.variable.field.gdshader
+
+  keyword:
+    - include: classifier-keyword
+    - include: struct-keyword
+    - include: control-keyword
+    - include: modifier-keyword
+    - include: precision-keyword
+    - include: type-keyword
+    - include: hint-keyword
+
+  control-keyword:
+    - match: \b(?:if|else|do|while|for|continue|break|switch|case|default|return|discard)\b
+      scope: keyword.control.gdshader
+
+  modifier-keyword:
+    - match: \b(?:const|global|instance|uniform|varying|in|out|inout|flat|smooth)\b
+      scope: storage.modifier.gdshader
+
+  precision-keyword:
+    - match: \b(?:low|medium|high)p\b
+      scope: storage.type.built-in.primitive.precision.gdshader
+
+  type-keyword:
+    - match: \b(?:void|bool|[biu]?vec[234]|u?int|float|mat[234]|[iu]?sampler(?:3D|2D(?:Array)?)|samplerCube)\b
+      scope: support.type.gdshader
+
+  hint-keyword:
+    - match: \b(?:source_color|hint_(?:color|range|(?:black_)?albedo|normal|(?:default_)?(?:white|black)|aniso|anisotropy|roughness_(?:[rgba]|normal|gray))|filter_(?:nearest|linear)(?:_mipmap(?:_anisotropic)?)?|repeat_(?:en|dis)able)\b
+      scope: support.type.annotation.gdshader
+
+
+  element:
+    - include: literal-float
+    - include: literal-int
+    - include: literal-bool
+    - include: identifier-type
+    - include: constructor
+    - include: processor-function
+    - include: identifier-function
+    - include: swizzling
+    - include: identifier-field
+    - include: constant-float
+    - include: language-variable
+    - include: identifier-variable
+
+  literal-float:
+    - match: \b(?:\d+[eE][-+]?\d+|(?:\d*[.]\d+|\d+[.])(?:[eE][-+]?\d+)?)[fF]?
+      scope: constant.numeric.float.gdshader
+
+  literal-int:
+    - match: \b(?:0[xX][0-9A-Fa-f]+|\d+[uU]?)\b
+      scope: constant.numeric.integer.gdshader
+
+  literal-bool:
+    - match: \b(?:false|true)\b
+      scope: constant.language.boolean.gdshader
+
+  identifier-type:
+    - match: \b[a-zA-Z_]\w*(?=(?:\s*\[\s*\w*\s*\])?\s+[a-zA-Z_]\w*\b)
+      scope: entity.name.type.gdshader
+
+  constructor:
+    - match: \b[a-zA-Z_]\w*(?=\s*\[\s*\w*\s*\]\s*[(])|\b[A-Z]\w*(?=\s*[(])
+      scope: entity.name.type.constructor.gdshader
+
+  processor-function:
+    - match: \b(?:vertex|fragment|light|start|process|sky|fog)(?=(?:\s|/\*(?:\*(?!/)|[^*])*\*/)*[(])
+      scope: support.function.gdshader
+
+  identifier-function:
+    - match: \b[a-zA-Z_]\w*(?=(?:\s|/\*(?:\*(?!/)|[^*])*\*/)*[(])
+      scope: entity.name.function.gdshader
+
+  swizzling:
+    - match: ([.])\s*([xyzw]{2,4}|[rgba]{2,4}|[stpq]{2,4})\b,
+      captures:
+        1: punctuation.accessor.gdshader
+        2: variable.other.property.gdshader
+
+  identifier-field:
+    - match: ([.])\s*([a-zA-Z_]\w*)\b(?!\s*\()
+      captures:
+        1: punctuation.accessor.gdshader
+        2: entity.name.variable.field.gdshader
+
+  constant-float:
+    - match: \b(?:E|PI|TAU)\b
+      scope: constant.language.float.gdshader
+
+  language-variable:
+    - match: \b(?:[A-Z][A-Z_0-9]*)\b
+      scope: variable.language.gdshader
+
+  identifier-variable:
+    - match: \b[a-zA-Z_]\w*\b
+      scope: variable.name.gdshader
+
   separator:
+    - match: \.
+      scope: punctuation.accessor.gdshader
     - include: separator-comma
+    - match: \;
+      scope: punctuation.terminator.statement.gdshader
+    - match: ':'
+      scope: keyword.operator.type.annotation.gdshader
 
   separator-comma:
-    - meta_scope: punctuation.separator.comma.gdshader
-    - match: \[,\]
+    - match: \,
+      scope: punctuation.separator.comma.gdshader
 
   operator:
     - match: (?:\+\+|--)
