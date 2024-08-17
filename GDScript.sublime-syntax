@@ -17,9 +17,9 @@ contexts:
 
   statement_keyword:
     - match: (?x)\n  \b(?<!\.)(\n continue | assert | break | elif | else | if | pass | return | while )\b\n
-      name: keyword.control.flow.gdscript
+      scope: keyword.control.flow.gdscript
     - match: \b(?<!\.)(class)\b
-      name: storage.type.class.gdscript
+      scope: storage.type.class.gdscript
     - match: (?x)\n  ^\s*(\n    case | match\n  )(?=\s*([-+\w\d(\[{'\":#]|$))\b\n
       captures:
         1: keyword.control.flow.gdscript
@@ -78,7 +78,7 @@ contexts:
 
   comment:
     - match: (##|#).*$\n?
-      name: comment.line.number-sign.gdscript
+      scope: comment.line.number-sign.gdscript
       captures:
         1: punctuation.definition.comment.number-sign.gdscript
 
@@ -89,7 +89,7 @@ contexts:
       push:
         - meta_scope: string.quoted.gdscript
         - match: \\.
-          name: constant.character.escape.gdscript
+          scope: constant.character.escape.gdscript
         - include: string_percent_placeholders
         - include: string_bracket_placeholders
         - match: \2
@@ -97,78 +97,75 @@ contexts:
 
   string_percent_placeholders:
     - match: (?x)\n  (\n % (\([\w\s]*\))?\n [-+#0 ]*\n (\d+|\*)? (\.(\d+|\*))?\n ([hlL])?\n [diouxXeEfFgGcrsab%]\n  )\n
-      name: meta.format.percent.gdscript,
+      scope: meta.format.percent.gdscript,
       captures:
         1: constant.character.format.placeholder.other.gdscript
 
   string_bracket_placeholders:
     # TODO Verify if correct
     - match: (?x)\n  (\n    {{ | }}\n    | (?:\n      {\n        \w* (\.[[:alpha:]_]\w* | \[[^\]'\"]+\])*\n        (![rsa])?\n        ( ':' \w? [<>=^]? [-+ ]? \#?\n          \d* ,? (\.\d+)? [bcdeEfFgGnosxX%]? )?\n      })\n  )\n
-      name: meta.format.brace.gdscript
+      scope: meta.format.brace.gdscript
       captures:
         1: constant.character.format.placeholder.other.gdscript
         3: storage.type.format.gdscript
         4: storage.type.format.gdscript
 
     - match: (?x)\n  (\n    {\n      \w* (\.[[:alpha:]_]\w* | \[[^\]'\"]+\])*\n      (![rsa])?\n      (:)\n        [^'\"{}\n]* (?:\n          \{ [^'\"}\n]*? \} [^'\"{}\n]*\n        )*\n    }\n  )\n
-      name: meta.format.brace.gdscript
+      scope: meta.format.brace.gdscript
       captures:
         1: constant.character.format.placeholder.other.gdscript
         3: storage.type.format.gdscript
         4: storage.type.format.gdscript
 
-    # "nodepath_object": {
-    #   "name": "meta.literal.nodepath.gdscript",
-    #   "begin": "(NodePath)\\s*(?:\\()",
-    #   "beginCaptures": { "1": { "name": "support.class.library.gdscript" } },
-    #   "end": "(?:\\))",
-    #   "patterns": [
-    #     {
-    #       "begin": "(\"|')",
-    #       "end": "\\1",
-    #       "name": "string.quoted.gdscript constant.character.escape.gdscript",
-    #       "patterns": [
-    #         {
-    #           "match": "%",
-    #           "name": "keyword.control.flow.gdscript"
-    #         }
-    #       ]
-    #     }
-    #   ]
-    # },
-    # "nodepath_function": {
-    #   "name": "meta.function.gdscript",
-    #   "contentName": "meta.function.parameters.gdscript",
-    #   "begin": "(get_node_or_null|has_node|has_node_and_resource|find_node|get_node)\\s*(\\()",
-    #   "beginCaptures": {
-    #     "1": { "name": "entity.name.function.gdscript" },
-    #     "2": { "name": "punctuation.definition.parameters.begin.gdscript" }
-    #   },
-    #   "end": "(\\))",
-    #   "endCaptures": { "1": { "name": "punctuation.definition.parameters.end.gdscript" } },
-    #   "patterns": [
-    #     {
-    #       "begin": "(\"|')",
-    #       "end": "\\1",
-    #       "name": "string.quoted.gdscript meta.literal.nodepath.gdscript constant.character.escape",
-    #       "patterns": [
-    #         {
-    #           "match": "%",
-    #           "name": "keyword.control.flow"
-    #         }
-    #       ]
-    #     },
-    #     { "include": "#base_expression" }
-    #   ]
-    # },
-    # "self": {
-    #   "match": "\\bself\\b",
-    #   "name": "variable.language.gdscript"
-    # },
-    # "func": {
-    #   "match": "\\bfunc\\b",
-    #   "name": "keyword.language.gdscript"
-    # },
+  nodepath_object:
+    - match: (NodePath)\s*(?:\()
+      captures:
+        1: support.class.library.gdscript
+      push:
+        - meta_scope: meta.literal.nodepath.gdscript
+        - match: (\"|')
+          scope: string.quoted.gdscript constant.character.escape.gdscript
+          push:
+            - match: \%
+              scope: keyword.control.flow.gdscript
+            - match: \1
+              pop: true
+        - match: (?:\))
+          pop: true
+
+  # nodepath_function:
+  #   "name": "meta.function.gdscript",
+  #   "contentName": "meta.function.parameters.gdscript",
+  #   "begin": "(get_node_or_null|has_node|has_node_and_resource|find_node|get_node)\\s*(\\()",
+  #   "beginCaptures": {
+  #     "1": { "name": "entity.name.function.gdscript" },
+  #     "2": { "name": "punctuation.definition.parameters.begin.gdscript" }
+  #   },
+  #   "end": "(\\))",
+  #   "endCaptures": { "1": { "name": "punctuation.definition.parameters.end.gdscript" } },
+  #   "patterns": [
+  #     {
+  #       "begin": "(\"|')",
+  #       "end": "\\1",
+  #       "name": "string.quoted.gdscript meta.literal.nodepath.gdscript constant.character.escape",
+  #       "patterns": [
+  #         {
+  #           "match": "%",
+  #           "name": "keyword.control.flow"
+  #         }
+  #       ]
+  #     },
+  #     { "include": "#base_expression" }
+  #   ]
+
+  self:
+    - match: \bself\b
+      scope: variable.language.gdscript
+
+  func:
+    - match: \bfunc\b
+      scope: keyword.language.gdscript
+
     # "in_keyword": {
     #   "patterns": [
     #     {
@@ -191,55 +188,56 @@ contexts:
     #     }
     #   ]
     # },
-    # "operators": {
-    #   "patterns": [
-    #     { "include": "#wordlike_operator" },
-    #     { "include": "#boolean_operator" },
-    #     { "include": "#arithmetic_operator" },
-    #     { "include": "#bitwise_operator" },
-    #     { "include": "#compare_operator" }
-    #   ]
-    # },
-    # "wordlike_operator": {
-    #   "match": "\\b(and|or|not)\\b",
-    #   "name": "keyword.operator.wordlike.gdscript"
-    # },
-    # "boolean_operator": {
-    #   "match": "(&&|\\|\\|)",
-    #   "name": "keyword.operator.boolean.gdscript"
-    # },
-    # "bitwise_operator": {
-    #   "match": "&|\\||<<=|>>=|<<|>>|\\^|~",
-    #   "name": "keyword.operator.bitwise.gdscript"
-    # },
-    # "compare_operator": {
-    #   "match": "<=|>=|==|<|>|!=|!",
-    #   "name": "keyword.operator.comparison.gdscript"
-    # },
-    # "arithmetic_operator": {
-    #   "match": "->|\\+=|-=|\\*=|\\^=|/=|%=|&=|~=|\\|=|\\*\\*|\\*|/|%|\\+|-",
-    #   "name": "keyword.operator.arithmetic.gdscript"
-    # },
-    # "assignment_operator": {
-    #   "match": "=",
-    #   "name": "keyword.operator.assignment.gdscript"
-    # },
-    # "control_flow": {
-    #   "match": "\\b(?:if|elif|else|while|break|continue|pass|return|when|yield|await)\\b",
-    #   "name": "keyword.control.gdscript"
-    # },
-    # "match_keyword": {
-    #   "match": "^\n\\s*(match)",
-    #   "captures": { "1": { "name": "keyword.control.gdscript" } }
-    # },
-    # "keywords": {
-    #   "match": "\\b(?:class|class_name|is|onready|tool|static|export|as|void|enum|assert|breakpoint|sync|remote|master|puppet|slave|remotesync|mastersync|puppetsync|trait|namespace)\\b",
-    #   "name": "keyword.language.gdscript"
-    # },
-    # "letter": {
-    #   "match": "\\b(?:true|false|null)\\b",
-    #   "name": "constant.language.gdscript"
-    # },
+
+  operators:
+    - include: wordlike_operator
+    - include: boolean_operator
+    - include: arithmetic_operator
+    - include: bitwise_operator
+    - include: compare_operator
+
+  wordlike_operator:
+    - match: \b(and|or|not)\b
+      scope: keyword.operator.wordlike.gdscript
+
+  boolean_operator:
+    - match: (&&|\|\|)
+      scope: keyword.operator.boolean.gdscript
+
+  bitwise_operator:
+    # TODO Verify if correct
+    - match: \&|\||<<=|>>=|<<|>>|\^|~
+      scope: keyword.operator.bitwise.gdscript
+
+  compare_operator:
+    - match: <=|>=|==|<|>|!=|!
+      scope: keyword.operator.comparison.gdscript
+
+  arithmetic_operator:
+    - match: ->|\+=|-=|\*=|\^=|/=|%=|&=|~=|\|=|\*\*|\*|/|%|\+|-
+      scope: keyword.operator.arithmetic.gdscript
+
+  assignment_operator:
+    - match: =
+      scope: keyword.operator.assignment.gdscript
+
+  control_flow:
+    - match: \b(?:if|elif|else|while|break|continue|pass|return|when|yield|await)\b
+      scope: keyword.control.gdscript
+
+  match_keyword:
+    - match: ^\n\s*(match)
+      captures:
+        1: keyword.control.gdscript
+
+  keywords:
+    - match: \b(?:class|class_name|is|onready|tool|static|export|as|void|enum|assert|breakpoint|sync|remote|master|puppet|slave|remotesync|mastersync|puppetsync|trait|namespace)\b
+      scope: keyword.language.gdscript
+
+  letter:
+    - match: \b(?:true|false|null)\b
+      scope: constant.language.gdscript
+
     # "numbers": {
     #   "patterns": [
     #     {
@@ -587,22 +585,22 @@ contexts:
     #     }
     #   ]
     # },
-    # "any_method": {
-    #   "match": "\\b([A-Za-z_]\\w*)\\b(?=\\s*(?:[(]))",
-    #   "name": "entity.name.function.other.gdscript"
-    # },
-    # "any_variable": {
-    #   "match": "\\b(?<![@\\$#%])([A-Za-z_]\\w*)\\b(?![(])",
-    #   "name": "variable.other.gdscript"
-    # },
-    # "any_property": {
-    #   "match": "\\b(\\.)\\s*(?<![@\\$#%])(?:([A-Z_][A-Z_0-9]*)|([A-Za-z_]\\w*))\\b(?![(])",
-    #   "captures": {
-    #     "1": { "name": "punctuation.accessor.gdscript" },
-    #     "2": { "name": "constant.language.gdscript" },
-    #     "3": { "name": "variable.other.property.gdscript" }
-    #   }
-    # },
+
+  any_method:
+    - match: \b([A-Za-z_]\w*)\b(?=\s*(?:[(]))
+      scope: entity.name.function.other.gdscript
+
+  any_variable:
+    - match: \b(?<![@\$#%])([A-Za-z_]\w*)\b(?![(])
+      scope: variable.other.gdscript
+
+  any_property:
+    - match: \b(\.)\s*(?<![@\$#%])(?:([A-Z_][A-Z_0-9]*)|([A-Za-z_]\w*))\b(?![(])
+      captures:
+        1: punctuation.accessor.gdscript
+        2: constant.language.gdscript
+        3: variable.other.property.gdscript
+
     # "function_call": {
     #   "name": "meta.function-call.gdscript",
     #   "comment": "Regular function call of the type \"name(args)\"",
