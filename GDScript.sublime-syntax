@@ -238,34 +238,20 @@ contexts:
     - match: \b(?:true|false|null)\b
       scope: constant.language.gdscript
 
-    # "numbers": {
-    #   "patterns": [
-    #     {
-    #       "match": "0b[01_]+",
-    #       "name": "constant.numeric.integer.binary.gdscript"
-    #     },
-    #     {
-    #       "match": "0x[0-9A-Fa-f_]+",
-    #       "name": "constant.numeric.integer.hexadecimal.gdscript"
-    #     },
-    #     {
-    #       "match": "[-]?([0-9][0-9_]+\\.[0-9_]*(e[\\-\\+]?[0-9_]+)?)",
-    #       "name": "constant.numeric.float.gdscript"
-    #     },
-    #     {
-    #       "match": "[-]?(\\.[0-9][0-9_]*(e[\\-\\+]?[0-9_]+)?)",
-    #       "name": "constant.numeric.float.gdscript"
-    #     },
-    #     {
-    #       "match": "[-]?([0-9][0-9_]*e[\\-\\+]?\\[0-9_])",
-    #       "name": "constant.numeric.float.gdscript"
-    #     },
-    #     {
-    #       "match": "[-]?[0-9][0-9_]*",
-    #       "name": "constant.numeric.integer.gdscript"
-    #     }
-    #   ]
-    # },
+  numbers:
+    - match: 0b[01_]+
+      scope: constant.numeric.integer.binary.gdscript
+    - match: 0x[0-9A-Fa-f_]+
+      scope: constant.numeric.integer.hexadecimal.gdscript
+    - match: \-?([0-9][0-9_]+\.[0-9_]*(e[\-\+]?[0-9_]+)?)
+      scope: constant.numeric.float.gdscript
+    - match: \-?(\.[0-9][0-9_]*(e[\-\+]?[0-9_]+)?)
+      scope: constant.numeric.float.gdscript
+    - match: \-?([0-9][0-9_]*e[\-\+]?\[0-9_])
+      scope: constant.numeric.float.gdscript
+    - match: \-?[0-9][0-9_]*
+      scope: constant.numeric.integer.gdscript
+
     # "variable_declaration": {
     #   "name": "meta.variable.declaration.gdscript",
     #   "begin": "\\b(?:(var)|(const))\\b",
@@ -327,49 +313,43 @@ contexts:
     #     }
     #   ]
     # },
-    # "class_declaration": {
-    #   "match": "(?<=^class)\\s+([a-zA-Z_]\\w*)\\s*(?=:)",
-    #   "captures": {
-    #     "1": { "name": "entity.name.type.class.gdscript" },
-    #     "2": { "name": "class.other.gdscript" }
-    #   }
-    # },
-    # "class_new": {
-    #   "match": "\\b([a-zA-Z_]\\w*).(new)\\(",
-    #   "captures": {
-    #     "1": { "name": "entity.name.type.class.gdscript" },
-    #     "2": { "name": "storage.type.new.gdscript" },
-    #     "3": { "name": "punctuation.parenthesis.begin.gdscript" }
-    #   }
-    # },
-    # "class_is": {
-    #   "match": "\\s+(is)\\s+([a-zA-Z_]\\w*)",
-    #   "captures": {
-    #     "1": { "name": "storage.type.is.gdscript" },
-    #     "2": { "name": "entity.name.type.class.gdscript" }
-    #   }
-    # },
-    # "class_enum": {
-    #   "match": "\\b([A-Z][a-zA-Z_0-9]*)\\.([A-Z_0-9]+)",
-    #   "captures": {
-    #     "1": { "name": "entity.name.type.class.gdscript" },
-    #     "2": { "name": "constant.language.gdscript" }
-    #   }
-    # },
-    # "class_name": {
-    #   "match": "(?<=class_name)\\s+([a-zA-Z_]\\w*(\\.([a-zA-Z_]\\w*))?)",
-    #   "captures": {
-    #     "1": { "name": "entity.name.type.class.gdscript" },
-    #     "2": { "name": "class.other.gdscript" }
-    #   }
-    # },
-    # "builtin_get_node_shorthand": {
-    #   "patterns": [
-    #     { "include": "#builtin_get_node_shorthand_quoted" },
-    #     { "include": "#builtin_get_node_shorthand_bare" },
-    #     { "include": "#builtin_get_node_shorthand_bare_multi" }
-    #   ]
-    # },
+
+  class_declaration:
+    - match: (?<=^class)\s+([a-zA-Z_]\w*)\s*(?=:)
+      captures:
+        1: entity.name.type.class.gdscript
+        2: class.other.gdscript
+
+  class_new:
+    - match: \b([a-zA-Z_]\w*).(new)\(
+      captures:
+        1: entity.name.type.class.gdscript
+        2: storage.type.new.gdscript
+        3: punctuation.parenthesis.begin.gdscript
+
+  class_is:
+    - match: \s+(is)\s+([a-zA-Z_]\w*)
+      captures:
+        1: storage.type.is.gdscript
+        2: entity.name.type.class.gdscript
+
+  class_enum:
+    - match: \b([A-Z][a-zA-Z_0-9]*)\.([A-Z_0-9]+)
+      captures:
+        1: entity.name.type.class.gdscript
+        2: constant.language.gdscript
+
+  class_name:
+    - match: (?<=class_name)\s+([a-zA-Z_]\w*(\.([a-zA-Z_]\w*))?)
+      captures:
+        1: entity.name.type.class.gdscript
+        2: class.other.gdscript
+
+  builtin_get_node_shorthand:
+    - include: builtin_get_node_shorthand_quoted
+    - include: builtin_get_node_shorthand_bare
+    - include: builtin_get_node_shorthand_bare_mult
+
     # "builtin_get_node_shorthand_quoted": {
     #   "name": "string.quoted.gdscript meta.literal.nodepath.gdscript constant.character.escape.gdscript",
     #   "begin": "(?:(\\$)|(&|\\^|@))(\"|')",
@@ -413,33 +393,32 @@ contexts:
     #     }
     #   ]
     # },
-    # "annotations": {
-    #   "match": "(@)(export|export_color_no_alpha|export_dir|export_enum|export_exp_easing|export_file|export_flags|export_flags_2d_navigation|export_flags_2d_physics|export_flags_2d_render|export_flags_3d_navigation|export_flags_3d_physics|export_flags_3d_render|export_global_dir|export_global_file|export_multiline|export_node_path|export_placeholder|export_range|icon|onready|rpc|tool|warning_ignore|abstract)\\b",
-    #   "captures": {
-    #     "1": { "name": "entity.name.function.decorator.gdscript" },
-    #     "2": { "name": "entity.name.function.decorator.gdscript" }
-    #   }
-    # },
-    # "builtin_classes": {
-    #   "match": "(?<![^.]\\.|:)\\b(OS|GDScript|Vector2|Vector2i|Vector3|Vector3i|Color|Rect2|Rect2i|Array|Basis|Dictionary|Plane|Quat|RID|Rect3|Transform|Transform2D|Transform3D|AABB|String|Color|NodePath|Object|PoolByteArray|PoolIntArray|PoolRealArray|PoolStringArray|PoolVector2Array|PoolVector3Array|PoolColorArray|bool|int|float|StringName|Quaternion|PackedByteArray|PackedInt32Array|PackedInt64Array|PackedFloat32Array|PackedFloat64Array|PackedStringArray|PackedVector2Array|PackedVector2iArray|PackedVector3Array|PackedVector3iArray|PackedColorArray|super)\\b",
-    #   "name": "entity.name.type.class.builtin.gdscript"
-    # },
-    # "const_vars": {
-    #   "match": "\\b([A-Z_][A-Z_0-9]*)\\b",
-    #   "name": "constant.language.gdscript"
-    # },
-    # "pascal_case_class": {
-    #   "match": "\\b([A-Z]+[a-z_0-9]*([A-Z]?[a-z_0-9]+)*[A-Z]?)\\b",
-    #   "name": "entity.name.type.class.gdscript"
-    # },
-    # "signal_declaration_bare": {
-    #   "name": "meta.signal.gdscript",
-    #   "match": "(?x) \\s*\n (signal) \\s+\n ([a-zA-Z_]\\w*)(?=[\\n\\s])",
-    #   "captures": {
-    #     "1": { "name": "keyword.language.gdscript storage.type.function.gdscript" },
-    #     "2": { "name": "entity.name.function.gdscript" }
-    #   }
-    # },
+
+  annotations:
+    - match: (@)(export|export_color_no_alpha|export_dir|export_enum|export_exp_easing|export_file|export_flags|export_flags_2d_navigation|export_flags_2d_physics|export_flags_2d_render|export_flags_3d_navigation|export_flags_3d_physics|export_flags_3d_render|export_global_dir|export_global_file|export_multiline|export_node_path|export_placeholder|export_range|icon|onready|rpc|tool|warning_ignore|abstract)\b
+      captures:
+        1: entity.name.function.decorator.gdscript
+        2: entity.name.function.decorator.gdscript
+
+  builtin_classes:
+    - match: (?<![^.]\.|:)\b(OS|GDScript|Vector2|Vector2i|Vector3|Vector3i|Color|Rect2|Rect2i|Array|Basis|Dictionary|Plane|Quat|RID|Rect3|Transform|Transform2D|Transform3D|AABB|String|Color|NodePath|Object|PoolByteArray|PoolIntArray|PoolRealArray|PoolStringArray|PoolVector2Array|PoolVector3Array|PoolColorArray|bool|int|float|StringName|Quaternion|PackedByteArray|PackedInt32Array|PackedInt64Array|PackedFloat32Array|PackedFloat64Array|PackedStringArray|PackedVector2Array|PackedVector2iArray|PackedVector3Array|PackedVector3iArray|PackedColorArray|super)\b
+      scope: entity.name.type.class.builtin.gdscript
+
+  const_vars:
+    - match: \b([A-Z_][A-Z_0-9]*)\b
+      scope: constant.language.gdscript
+
+  pascal_case_class:
+    - match: \b([A-Z]+[a-z_0-9]*([A-Z]?[a-z_0-9]+)*[A-Z]?)\b
+      scope: entity.name.type.class.gdscript
+
+  signal_declaration_bare:
+    - match: (?x) \s*\n (signal) \s+\n ([a-zA-Z_]\w*)(?=[\n\s])
+      scope: meta.signal.gdscript
+      captures:
+        1: keyword.language.gdscript storage.type.function.gdscript
+        2: entity.name.function.gdscript
+
     # "signal_declaration": {
     #   "name": "meta.signal.gdscript",
     #   "begin": "(?x) \\s*\n (signal) \\s+\n ([a-zA-Z_]\\w*) \\s*\n (?=\\()",
