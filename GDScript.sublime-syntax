@@ -166,28 +166,20 @@ contexts:
     - match: \bfunc\b
       scope: keyword.language.gdscript
 
-    # "in_keyword": {
-    #   "patterns": [
-    #     {
-    #       "begin": "\\b(for)\\b",
-    #       "end": ":",
-    #       "captures": { "1": { "name": "keyword.control.gdscript" } },
-    #       "patterns": [
-    #         {
-    #           "match": "\\bin\\b",
-    #           "name": "keyword.control.gdscript"
-    #         },
-    #         { "include": "#base_expression" },
-    #         { "include": "#any_variable" },
-    #         { "include": "#any_property" }
-    #       ]
-    #     },
-    #     {
-    #       "match": "\\bin\\b",
-    #       "name": "keyword.operator.wordlike.gdscript"
-    #     }
-    #   ]
-    # },
+  in_keyword:
+    - match: \b(for)\b
+      captures:
+        1: keyword.control.gdscript
+      push:
+        - match: \bin\b
+          scope: keyword.control.gdscript
+        - include: base_expression
+        - include: any_variable
+        - include: any_property
+        - match: ':'
+          pop: true
+    - match: \bin\b
+      scope: keyword.operator.wordlike.gdscript
 
   operators:
     - include: wordlike_operator
@@ -252,49 +244,37 @@ contexts:
     - match: \-?[0-9][0-9_]*
       scope: constant.numeric.integer.gdscript
 
-    # "variable_declaration": {
-    #   "name": "meta.variable.declaration.gdscript",
-    #   "begin": "\\b(?:(var)|(const))\\b",
-    #   "beginCaptures": {
-    #     "1": { "name": "keyword.language.gdscript storage.type.var.gdscript" },
-    #     "2": { "name": "keyword.language.gdscript storage.type.const.gdscript" }
-    #   },
-    #   "end": "$|;",
-    #   "patterns": [
-    #     {
-    #       "match": "(:)?\\s*(set|get)\\s+=\\s+([a-zA-Z_]\\w*)",
-    #       "captures": {
-    #         "1": { "name": "punctuation.separator.annotation.gdscript" },
-    #         "2": { "name": "keyword.language.gdscript storage.type.const.gdscript" },
-    #         "3": { "name": "entity.name.function.gdscript" }
-    #       }
-    #     },
-    #     {
-    #       "match": ":=|=(?!=)",
-    #       "name": "keyword.operator.assignment.gdscript"
-    #     },
-    #     {
-    #       "match": "(:)\\s*([a-zA-Z_]\\w*)?",
-    #       "captures": {
-    #         "1": { "name": "punctuation.separator.annotation.gdscript" },
-    #         "2": { "name": "entity.name.type.class.gdscript" }
-    #       }
-    #     },
-    #     {
-    #       "match": "(setget)\\s+([a-zA-Z_]\\w*)(?:[,]\\s*([a-zA-Z_]\\w*))?",
-    #       "captures": {
-    #         "1": { "name": "keyword.language.gdscript storage.type.const.gdscript" },
-    #         "2": { "name": "entity.name.function.gdscript" },
-    #         "3": { "name": "entity.name.function.gdscript" }
-    #       }
-    #     },
-    #     { "include": "#expression" },
-    #     { "include": "#letter" },
-    #     { "include": "#any_variable" },
-    #     { "include": "#any_property" },
-    #     { "include": "#keywords" }
-    #   ]
-    # },
+  variable_declaration:
+    - match: \b(?:(var)|(const))\b
+      scope: meta.variable.declaration.gdscript
+      captures:
+        1: keyword.language.gdscript storage.type.var.gdscript
+        2: keyword.language.gdscript storage.type.const.gdscript
+      push:
+      - match: (:)?\s*(set|get)\s+=\s+([a-zA-Z_]\w*)
+        captures:
+          1: punctuation.separator.annotation.gdscript
+          2: keyword.language.gdscript storage.type.const.gdscript
+          3: entity.name.function.gdscript
+      - match: :=|=(?!=)
+        scope: keyword.operator.assignment.gdscript
+      - match: (:)\s*([a-zA-Z_]\w*)?
+        captures:
+          1: punctuation.separator.annotation.gdscript
+          2: entity.name.type.class.gdscript
+      - match: (setget)\s+([a-zA-Z_]\w*)(?:[,]\s*([a-zA-Z_]\w*))?
+        captures:
+          1: keyword.language.gdscript storage.type.const.gdscript
+          2: entity.name.function.gdscript
+          3: entity.name.function.gdscript
+      - include: expression
+      - include: letter
+      - include: any_variable
+      - include: any_property
+      - include: keywords
+      - match: $|;
+        pop: true
+
     # "getter_setter_godot4": {
     #   "patterns": [
     #     {
@@ -493,13 +473,18 @@ contexts:
     #     { "include": "#loose_default" }
     #   ]
     # },
-    # "loose_default": {
-    #   "begin": "(=)",
-    #   "end": "(,)|(?=\\))",
-    #   "beginCaptures": { "1": { "name": "keyword.operator.gdscript" } },
-    #   "endCaptures": { "1": { "name": "punctuation.separator.parameters.gdscript" } },
-    #   "patterns": [ { "include": "#base_expression" } ]
-    # },
+
+  loose_default:
+    - match: (=)
+      captures:
+        1: keyword.operator.gdscript
+      push:
+        - include: base_expression
+        - match: (,)|(?=\))
+          captures:
+            1: punctuation.separator.parameters.gdscript
+          pop: true
+
     # "annotated_parameter": {
     #   "begin": "(?x)\n \\s* ([a-zA-Z_]\\w*) \\s* (:)\\s* ([a-zA-Z_]\\w*)? \n",
     #   "beginCaptures": {
@@ -517,53 +502,55 @@ contexts:
     #     }
     #   ]
     # },
-    # "curly_braces": {
-    #   "begin": "\\{",
-    #   "end": "\\}",
-    #   "beginCaptures": { "0": { "name": "punctuation.definition.dict.begin.gdscript" } },
-    #   "endCaptures": { "0": { "name": "punctuation.definition.dict.end.gdscript" } },
-    #   "patterns": [
-    #     { "include": "#base_expression" },
-    #     { "include": "#any_variable" }
-    #   ]
-    # },
-    # "square_braces": {
-    #   "begin": "\\[",
-    #   "end": "\\]",
-    #   "beginCaptures": { "0": { "name": "punctuation.definition.list.begin.gdscript" } },
-    #   "endCaptures": { "0": { "name": "punctuation.definition.list.end.gdscript" } },
-    #   "patterns": [
-    #     { "include": "#base_expression" },
-    #     { "include": "#any_variable" }
-    #   ]
-    # },
-    # "round_braces": {
-    #   "begin": "\\(",
-    #   "end": "\\)",
-    #   "beginCaptures": { "0": { "name": "punctuation.parenthesis.begin.gdscript" } },
-    #   "endCaptures": { "0": { "name": "punctuation.parenthesis.end.gdscript" } },
-    #   "patterns": [
-    #     { "include": "#base_expression" },
-    #     { "include": "#any_variable" }
-    #   ]
-    # },
-    # "line_continuation": {
-    #   "patterns": [
-    #     {
-    #       "match": "(\\\\)\\s*(\\S.*$\\n?)",
-    #       "captures": {
-    #         "1": { "name": "punctuation.separator.continuation.line.gdscript" },
-    #         "2": { "name": "invalid.illegal.line.continuation.gdscript" }
-    #       }
-    #     },
-    #     {
-    #       "begin": "(\\\\)\\s*$\\n?",
-    #       "end": "(?x)\n  (?=^\\s*$)\n  |\n  (?! (\\s* [rR]? (\\'\\'\\'|\\\"\\\"\\\"|\\'|\\\"))\n      |\n      (\\G $)  (?# '\\G' is necessary for ST)\n  )\n",
-    #       "beginCaptures": { "1": { "name": "punctuation.separator.continuation.line.gdscript" } },
-    #       "patterns": [ { "include": "#base_expression" } ]
-    #     }
-    #   ]
-    # },
+
+  curly_braces:
+    - match: \{
+      captures:
+        0: punctuation.definition.dict.begin.gdscript
+      push:
+        - include: base_expression
+        - include: any_variable
+        - match: \}
+          captures:
+            0: punctuation.definition.dict.end.gdscript
+          pop: true
+
+  square_braces:
+    - match: \[
+      captures:
+        0: punctuation.definition.list.begin.gdscript
+      push:
+        - include: base_expression
+        - include: any_variable
+        - match: \]
+          captures:
+            0: punctuation.definition.list.end.gdscript
+          pop: true
+
+  round_braces:
+    - match: \(
+      captures:
+        0: punctuation.parenthesis.begin.gdscript
+      push:
+        - include: base_expression
+        - include: any_variable
+        - match: \)
+          captures:
+            0: punctuation.parenthesis.end.gdscript
+          pop: true
+
+  line_continuation:
+    - match: (\\)\s*(\S.*$\n?)
+      captures:
+        1: punctuation.separator.continuation.line.gdscript
+        2: invalid.illegal.line.continuation.gdscript
+    - match: (\\)\s*$\n?
+      captures:
+        1: punctuation.separator.continuation.line.gdscript
+      push:
+        - include: base_expression
+        - match: (?x)\n  (?=^\s*$)\n  |\n  (?! (\s* [rR]? (\'\'\'|\"\"\"|\'|\"))\n      |\n      (\G $)  (?# '\\G' is necessary for ST)\n  )\n
+          pop: true
 
   any_method:
     - match: \b([A-Za-z_]\w*)\b(?=\s*(?:[(]))
@@ -591,6 +578,7 @@ contexts:
     #     { "include": "#function_arguments" }
     #   ]
     # },
+
     # "function_name": {
     #   "patterns": [
     #     { "include": "#builtin_classes" },
@@ -605,6 +593,7 @@ contexts:
     #     }
     #   ]
     # },
+
     # "function_arguments": {
     #   "begin": "(\\()",
     #   "beginCaptures": { "1": { "name": "punctuation.definition.arguments.begin.gdscript" } },
