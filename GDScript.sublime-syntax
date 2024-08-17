@@ -275,24 +275,20 @@ contexts:
       - match: $|;
         pop: true
 
-    # "getter_setter_godot4": {
-    #   "patterns": [
-    #     {
-    #       "match": "\\b(get):",
-    #       "captures": { "1": { "name": "entity.name.function.gdscript" } }
-    #     },
-    #     {
-    #       "name": "meta.function.gdscript",
-    #       "begin": "(?x) \\s+\n (set) \\s*\n (?=\\()",
-    #       "end": "(:|(?=[#'\"\\n]))",
-    #       "beginCaptures": { "1": { "name": "entity.name.function.gdscript" } },
-    #       "patterns": [
-    #         { "include": "#parameters" },
-    #         { "include": "#line_continuation" }
-    #       ]
-    #     }
-    #   ]
-    # },
+  getter_setter_godot4:
+    # Supposed to be \b(get): but I dunno
+    - match: '\b(get):'
+      captures:
+        1: entity.name.function.gdscript
+    - match: (?x) \s+\n (set) \s*\n (?=\()
+      scope: meta.function.gdscript
+      captures:
+        1: entity.name.function.gdscript
+      push:
+        - include: parameters
+        - include: line_continuation
+        - match: (:|(?=[#'\"\\n]))
+          pop: true
 
   class_declaration:
     - match: (?<=^class)\s+([a-zA-Z_]\w*)\s*(?=:)
