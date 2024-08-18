@@ -16,16 +16,23 @@ contexts:
     - include: extends_statement
 
   statement_keyword:
-    - match: (?x)\n  \b(?<!\.)(\n continue | assert | break | elif | else | if | pass | return | while )\b\n
+    - match: |-
+        (?x)
+         \b(?<!\.)(
+        continue | assert | break | elif | else | if | pass | return | while )\b
       scope: keyword.control.flow.gdscript
     - match: \b(?<!\.)(class)\b
       scope: storage.type.class.gdscript
-    - match: (?x)\n  ^\s*(\n    case | match\n  )(?=\s*([-+\w\d(\[{'\":#]|$))\b\n
+    - match: |-
+        (?x)
+        ^\s*(
+          case | match
+        )(?=\s*([-+\w\d(\[{'":#]|$))\b
       captures:
         1: keyword.control.flow.gdscript
 
   extends_statement:
-    - match: (extends)\s+([a-zA-Z_]\w*\.[a-zA-Z_]\w*)?
+    - match: '(extends)\s+([a-zA-Z_]\w*\.[a-zA-Z_]\w*)?'
       captures:
         1: keyword.language.gdscript
         2: entity.other.inherited-class.gdscript
@@ -83,34 +90,62 @@ contexts:
         1: punctuation.definition.comment.number-sign.gdscript
 
   strings:
-    - match: (r)?(\"\"\"|'''|\"|')
+    - match: (r)?("""|'''|"|')
       captures:
         1: constant.character.escape.gdscript
       push:
         - meta_scope: string.quoted.gdscript
+        - match: \2
+          pop: true
         - match: \\.
           scope: constant.character.escape.gdscript
         - include: string_percent_placeholders
         - include: string_bracket_placeholders
-        - match: \2
-          pop: true
 
   string_percent_placeholders:
-    - match: (?x)\n  (\n % (\([\w\s]*\))?\n [-+#0 ]*\n (\d+|\*)? (\.(\d+|\*))?\n ([hlL])?\n [diouxXeEfFgGcrsab%]\n  )\n
-      scope: meta.format.percent.gdscript,
+    - match: |-
+        (?x)
+         (
+        % (\([\w\s]*\))?
+        [-+#0 ]*
+        (\d+|\*)? (\.(\d+|\*))?
+        ([hlL])?
+        [diouxXeEfFgGcrsab%]
+         )
+      scope: meta.format.percent.gdscript
       captures:
         1: constant.character.format.placeholder.other.gdscript
 
   string_bracket_placeholders:
-    # TODO Verify if correct
-    - match: (?x)\n  (\n    {{ | }}\n    | (?:\n      {\n        \w* (\.[[:alpha:]_]\w* | \[[^\]'\"]+\])*\n        (![rsa])?\n        ( ':' \w? [<>=^]? [-+ ]? \#?\n          \d* ,? (\.\d+)? [bcdeEfFgGnosxX%]? )?\n      })\n  )\n
+    - match: |-
+        (?x)
+        (
+          {{ | }}
+          | (?:
+            {
+              \w* (\.[[:alpha:]_]\w* | \[[^\]'"]+\])*
+              (![rsa])?
+              ( : \w? [<>=^]? [-+ ]? \#?
+                \d* ,? (\.\d+)? [bcdeEfFgGnosxX%]? )?
+            })
+        )
       scope: meta.format.brace.gdscript
       captures:
         1: constant.character.format.placeholder.other.gdscript
         3: storage.type.format.gdscript
         4: storage.type.format.gdscript
-
-    - match: (?x)\n  (\n    {\n      \w* (\.[[:alpha:]_]\w* | \[[^\]'\"]+\])*\n      (![rsa])?\n      (:)\n        [^'\"{}\n]* (?:\n          \{ [^'\"}\n]*? \} [^'\"{}\n]*\n        )*\n    }\n  )\n
+    - match: |-
+        (?x)
+        (
+          {
+            \w* (\.[[:alpha:]_]\w* | \[[^\]'"]+\])*
+            (![rsa])?
+            (:)
+              [^'"{}\n]* (?:
+                \{ [^'"}\n]*? \} [^'"{}\n]*
+              )*
+          }
+        )
       scope: meta.format.brace.gdscript
       captures:
         1: constant.character.format.placeholder.other.gdscript
@@ -123,40 +158,36 @@ contexts:
         1: support.class.library.gdscript
       push:
         - meta_scope: meta.literal.nodepath.gdscript
-        - match: (\"|')
-          scope: string.quoted.gdscript constant.character.escape.gdscript
-          push:
-            - match: \%
-              scope: keyword.control.flow.gdscript
-            - match: \1
-              pop: true
         - match: (?:\))
           pop: true
+        - match: ("|')
+          push:
+            - meta_scope: string.quoted.gdscript constant.character.escape.gdscript
+            - match: \1
+              pop: true
+            - match: '%'
+              scope: keyword.control.flow.gdscript
 
-  # nodepath_function:
-  #   "name": "meta.function.gdscript",
-  #   "contentName": "meta.function.parameters.gdscript",
-  #   "begin": "(get_node_or_null|has_node|has_node_and_resource|find_node|get_node)\\s*(\\()",
-  #   "beginCaptures": {
-  #     "1": { "name": "entity.name.function.gdscript" },
-  #     "2": { "name": "punctuation.definition.parameters.begin.gdscript" }
-  #   },
-  #   "end": "(\\))",
-  #   "endCaptures": { "1": { "name": "punctuation.definition.parameters.end.gdscript" } },
-  #   "patterns": [
-  #     {
-  #       "begin": "(\"|')",
-  #       "end": "\\1",
-  #       "name": "string.quoted.gdscript meta.literal.nodepath.gdscript constant.character.escape",
-  #       "patterns": [
-  #         {
-  #           "match": "%",
-  #           "name": "keyword.control.flow"
-  #         }
-  #       ]
-  #     },
-  #     { "include": "#base_expression" }
-  #   ]
+  nodepath_function:
+    - match: (get_node_or_null|has_node|has_node_and_resource|find_node|get_node)\s*(\()
+      captures:
+        1: entity.name.function.gdscript
+        2: punctuation.definition.parameters.begin.gdscript
+      push:
+        - meta_scope: meta.function.gdscript
+        - meta_content_scope: meta.function.parameters.gdscript
+        - match: (\))
+          captures:
+            1: punctuation.definition.parameters.end.gdscript
+          pop: true
+        - match: ("|')
+          push:
+            - meta_scope: string.quoted.gdscript meta.literal.nodepath.gdscript constant.character.escape
+            - match: \1
+              pop: true
+            - match: '%'
+              scope: keyword.control.flow
+        - include: base_expression
 
   self:
     - match: \bself\b
@@ -171,13 +202,15 @@ contexts:
       captures:
         1: keyword.control.gdscript
       push:
+        - match: ':'
+          captures:
+            1: keyword.control.gdscript
+          pop: true
         - match: \bin\b
           scope: keyword.control.gdscript
         - include: base_expression
         - include: any_variable
         - include: any_property
-        - match: ':'
-          pop: true
     - match: \bin\b
       scope: keyword.operator.wordlike.gdscript
 
@@ -197,8 +230,7 @@ contexts:
       scope: keyword.operator.boolean.gdscript
 
   bitwise_operator:
-    # TODO Verify if correct
-    - match: \&|\||<<=|>>=|<<|>>|\^|~
+    - match: '&|\||<<=|>>=|<<|>>|\^|~'
       scope: keyword.operator.bitwise.gdscript
 
   compare_operator:
@@ -206,11 +238,11 @@ contexts:
       scope: keyword.operator.comparison.gdscript
 
   arithmetic_operator:
-    - match: ->|\+=|-=|\*=|\^=|/=|%=|&=|~=|\|=|\*\*|\*|/|%|\+|-
+    - match: '->|\+=|-=|\*=|\^=|/=|%=|&=|~=|\|=|\*\*|\*|/|%|\+|-'
       scope: keyword.operator.arithmetic.gdscript
 
   assignment_operator:
-    - match: =
+    - match: '='
       scope: keyword.operator.assignment.gdscript
 
   control_flow:
@@ -218,7 +250,9 @@ contexts:
       scope: keyword.control.gdscript
 
   match_keyword:
-    - match: ^\n\s*(match)
+    - match: |-
+        ^
+        \s*(match)
       captures:
         1: keyword.control.gdscript
 
@@ -231,92 +265,95 @@ contexts:
       scope: constant.language.gdscript
 
   numbers:
-    - match: 0b[01_]+
+    - match: '0b[01_]+'
       scope: constant.numeric.integer.binary.gdscript
-    - match: 0x[0-9A-Fa-f_]+
+    - match: '0x[0-9A-Fa-f_]+'
       scope: constant.numeric.integer.hexadecimal.gdscript
-    - match: \-?([0-9][0-9_]+\.[0-9_]*(e[\-\+]?[0-9_]+)?)
+    - match: '[-]?([0-9][0-9_]+\.[0-9_]*(e[\-\+]?[0-9_]+)?)'
       scope: constant.numeric.float.gdscript
-    - match: \-?(\.[0-9][0-9_]*(e[\-\+]?[0-9_]+)?)
+    - match: '[-]?(\.[0-9][0-9_]*(e[\-\+]?[0-9_]+)?)'
       scope: constant.numeric.float.gdscript
-    - match: \-?([0-9][0-9_]*e[\-\+]?\[0-9_])
+    - match: '[-]?([0-9][0-9_]*e[\-\+]?\[0-9_])'
       scope: constant.numeric.float.gdscript
-    - match: \-?[0-9][0-9_]*
+    - match: '[-]?[0-9][0-9_]*'
       scope: constant.numeric.integer.gdscript
 
   variable_declaration:
     - match: \b(?:(var)|(const))\b
-      scope: meta.variable.declaration.gdscript
       captures:
         1: keyword.language.gdscript storage.type.var.gdscript
         2: keyword.language.gdscript storage.type.const.gdscript
       push:
-      - match: (:)?\s*(set|get)\s+=\s+([a-zA-Z_]\w*)
-        captures:
-          1: punctuation.separator.annotation.gdscript
-          2: keyword.language.gdscript storage.type.const.gdscript
-          3: entity.name.function.gdscript
-      - match: :=|=(?!=)
-        scope: keyword.operator.assignment.gdscript
-      - match: (:)\s*([a-zA-Z_]\w*)?
-        captures:
-          1: punctuation.separator.annotation.gdscript
-          2: entity.name.type.class.gdscript
-      - match: (setget)\s+([a-zA-Z_]\w*)(?:[,]\s*([a-zA-Z_]\w*))?
-        captures:
-          1: keyword.language.gdscript storage.type.const.gdscript
-          2: entity.name.function.gdscript
-          3: entity.name.function.gdscript
-      - include: expression
-      - include: letter
-      - include: any_variable
-      - include: any_property
-      - include: keywords
-      - match: $|;
-        pop: true
+        - meta_scope: meta.variable.declaration.gdscript
+        - match: $|;
+          pop: true
+        - match: '(:)?\s*(set|get)\s+=\s+([a-zA-Z_]\w*)'
+          captures:
+            1: punctuation.separator.annotation.gdscript
+            2: keyword.language.gdscript storage.type.const.gdscript
+            3: entity.name.function.gdscript
+        - match: ':=|=(?!=)'
+          scope: keyword.operator.assignment.gdscript
+        - match: '(:)\s*([a-zA-Z_]\w*)?'
+          captures:
+            1: punctuation.separator.annotation.gdscript
+            2: entity.name.type.class.gdscript
+        - match: '(setget)\s+([a-zA-Z_]\w*)(?:[,]\s*([a-zA-Z_]\w*))?'
+          captures:
+            1: keyword.language.gdscript storage.type.const.gdscript
+            2: entity.name.function.gdscript
+            3: entity.name.function.gdscript
+        - include: expression
+        - include: letter
+        - include: any_variable
+        - include: any_property
+        - include: keywords
 
+  # From generated syntax
   getter_setter_godot4:
-    # Supposed to be \b(get): but I dunno
     - match: '\b(get):'
       captures:
         1: entity.name.function.gdscript
-    - match: (?x) \s+\n (set) \s*\n (?=\()
-      scope: meta.function.gdscript
+    - match: |-
+        (?x) \s+
+        (set) \s*
+        (?=\()
       captures:
         1: entity.name.function.gdscript
       push:
+        - meta_scope: meta.function.gdscript
+        - match: '(:|(?=[#''"\n]))'
+          pop: true
         - include: parameters
         - include: line_continuation
-        - match: (:|(?=[#'\"\\n]))
-          pop: true
 
   class_declaration:
-    - match: (?<=^class)\s+([a-zA-Z_]\w*)\s*(?=:)
+    - match: '(?<=^class)\s+([a-zA-Z_]\w*)\s*(?=:)'
       captures:
         1: entity.name.type.class.gdscript
         2: class.other.gdscript
 
   class_new:
-    - match: \b([a-zA-Z_]\w*).(new)\(
+    - match: '\b([a-zA-Z_]\w*).(new)\('
       captures:
         1: entity.name.type.class.gdscript
         2: storage.type.new.gdscript
         3: punctuation.parenthesis.begin.gdscript
 
   class_is:
-    - match: \s+(is)\s+([a-zA-Z_]\w*)
+    - match: '\s+(is)\s+([a-zA-Z_]\w*)'
       captures:
         1: storage.type.is.gdscript
         2: entity.name.type.class.gdscript
 
   class_enum:
-    - match: \b([A-Z][a-zA-Z_0-9]*)\.([A-Z_0-9]+)
+    - match: '\b([A-Z][a-zA-Z_0-9]*)\.([A-Z_0-9]+)'
       captures:
         1: entity.name.type.class.gdscript
         2: constant.language.gdscript
 
   class_name:
-    - match: (?<=class_name)\s+([a-zA-Z_]\w*(\.([a-zA-Z_]\w*))?)
+    - match: '(?<=class_name)\s+([a-zA-Z_]\w*(\.([a-zA-Z_]\w*))?)'
       captures:
         1: entity.name.type.class.gdscript
         2: class.other.gdscript
@@ -324,23 +361,23 @@ contexts:
   builtin_get_node_shorthand:
     - include: builtin_get_node_shorthand_quoted
     - include: builtin_get_node_shorthand_bare
-    - include: builtin_get_node_shorthand_bare_mult
+    - include: builtin_get_node_shorthand_bare_multi
 
   builtin_get_node_shorthand_quoted:
-    - match: (?:(\$)|(&|\^|@))(\"|')
-      scope: string.quoted.gdscript meta.literal.nodepath.gdscript constant.character.escape.gdscript
+    - match: (?:(\$)|(&|\^|@))("|')
       captures:
         1: keyword.control.flow.gdscript
         2: variable.other.enummember.gdscript
       push:
-        - match: \%
+        - meta_scope: string.quoted.gdscript meta.literal.nodepath.gdscript constant.character.escape.gdscript
+        - match: '%'
           scope: keyword.control.flow
         - match: (\3)
           pop: true
 
+  # TODO Find alternative to negative lookbehind (?<!
   # builtin_get_node_shorthand_bare:
-  #   # TODO Find alternative to negative lookbehind (?<!
-  #   - match: (?<!\/\s*)(\$|%|\$%)([a-zA-Z_]\w*)\b(?!\s*\/)
+  #   - match: '(?<!/\s*)(\$|%|\$%)([a-zA-Z_]\w*)\b(?!\s*/)'
   #     scope: meta.literal.nodepath.gdscript
   #     captures:
   #       1: keyword.control.flow.gdscript
@@ -348,19 +385,19 @@ contexts:
   #       3: constant.character.escape.gdscript
 
   builtin_get_node_shorthand_bare_multi:
-    - match: (\$|%|\$%)([a-zA-Z_]\w*)
-      scope: meta.literal.nodepath.gdscript
+    - match: '(\$|%|\$%)([a-zA-Z_]\w*)'
       captures:
         1: keyword.control.flow.gdscript
         2: constant.character.escape.gdscript
       push:
-        - match: (/)\s*(%)?\s*([a-zA-Z_]\w*)\s*
+        - meta_scope: meta.literal.nodepath.gdscript
+        - match: '(?!\s*/\s*%?\s*[a-zA-Z_]\w*)'
+          pop: true
+        - match: '(/)\s*(%)?\s*([a-zA-Z_]\w*)\s*'
           captures:
             1: constant.character.escape.gdscript
             2: keyword.control.flow.gdscript
             3: constant.character.escape.gdscript
-        - match: (?!\s*/\s*%?\s*[a-zA-Z_]\w*)
-          pop: true
 
   annotations:
     - match: (@)(export|export_color_no_alpha|export_dir|export_enum|export_exp_easing|export_file|export_flags|export_flags_2d_navigation|export_flags_2d_physics|export_flags_2d_render|export_flags_3d_navigation|export_flags_3d_physics|export_flags_3d_render|export_global_dir|export_global_file|export_multiline|export_node_path|export_placeholder|export_range|icon|onready|rpc|tool|warning_ignore|abstract)\b
@@ -369,37 +406,58 @@ contexts:
         2: entity.name.function.decorator.gdscript
 
   builtin_classes:
-    - match: (?<![^.]\.|:)\b(OS|GDScript|Vector2|Vector2i|Vector3|Vector3i|Color|Rect2|Rect2i|Array|Basis|Dictionary|Plane|Quat|RID|Rect3|Transform|Transform2D|Transform3D|AABB|String|Color|NodePath|Object|PoolByteArray|PoolIntArray|PoolRealArray|PoolStringArray|PoolVector2Array|PoolVector3Array|PoolColorArray|bool|int|float|StringName|Quaternion|PackedByteArray|PackedInt32Array|PackedInt64Array|PackedFloat32Array|PackedFloat64Array|PackedStringArray|PackedVector2Array|PackedVector2iArray|PackedVector3Array|PackedVector3iArray|PackedColorArray|super)\b
+    - match: '(?<![^.]\.|:)\b(OS|GDScript|Vector2|Vector2i|Vector3|Vector3i|Color|Rect2|Rect2i|Array|Basis|Dictionary|Plane|Quat|RID|Rect3|Transform|Transform2D|Transform3D|AABB|String|Color|NodePath|Object|PoolByteArray|PoolIntArray|PoolRealArray|PoolStringArray|PoolVector2Array|PoolVector3Array|PoolColorArray|bool|int|float|StringName|Quaternion|PackedByteArray|PackedInt32Array|PackedInt64Array|PackedFloat32Array|PackedFloat64Array|PackedStringArray|PackedVector2Array|PackedVector2iArray|PackedVector3Array|PackedVector3iArray|PackedColorArray|super)\b'
       scope: entity.name.type.class.builtin.gdscript
 
   const_vars:
-    - match: \b([A-Z_][A-Z_0-9]*)\b
+    - match: '\b([A-Z_][A-Z_0-9]*)\b'
       scope: constant.language.gdscript
 
   pascal_case_class:
-    - match: \b([A-Z]+[a-z_0-9]*([A-Z]?[a-z_0-9]+)*[A-Z]?)\b
+    - match: '\b([A-Z]+[a-z_0-9]*([A-Z]?[a-z_0-9]+)*[A-Z]?)\b'
       scope: entity.name.type.class.gdscript
 
   signal_declaration_bare:
-    - match: (?x) \s*\n (signal) \s+\n ([a-zA-Z_]\w*)(?=[\n\s])
+    - match: |-
+        (?x) \s*
+        (signal) \s+
+        ([a-zA-Z_]\w*)(?=[\n\s])
       scope: meta.signal.gdscript
       captures:
         1: keyword.language.gdscript storage.type.function.gdscript
         2: entity.name.function.gdscript
 
-    # "signal_declaration": {
-    #   "name": "meta.signal.gdscript",
-    #   "begin": "(?x) \\s*\n (signal) \\s+\n ([a-zA-Z_]\\w*) \\s*\n (?=\\()",
-    #   "end": "((?=[#'\"\\n]))",
-    #   "beginCaptures": {
-    #     "1": { "name": "keyword.language.gdscript storage.type.function.gdscript" },
-    #     "2": { "name": "entity.name.function.gdscript" }
-    #   },
-    #   "patterns": [
-    #     { "include": "#parameters" },
-    #     { "include": "#line_continuation" }
-    #   ]
-    # },
+  signal_declaration:
+    - match: |-
+        (?x) \s*
+        (signal) \s+
+        ([a-zA-Z_]\w*) \s*
+        (?=\()
+      captures:
+        1: keyword.language.gdscript storage.type.function.gdscript
+        2: entity.name.function.gdscript
+      push:
+        - meta_scope: meta.signal.gdscript
+        - match: '((?=[#''"\n]))'
+          pop: true
+        - include: parameters
+        - include: line_continuation
+
+  # TODO Check end2
+  lambda_declaration:
+    - match: (func)\s?(?=\()
+      captures:
+        1: keyword.language.gdscript storage.type.function.gdscript
+        2: entity.name.function.gdscript
+      push:
+        - meta_scope: meta.function.gdscript
+        - match: '(:|(?=[#''"\n]))'
+          pop: true
+        - include: parameters
+        - include: line_continuation
+        - include: base_expression
+        - include: any_variable
+        - include: any_property
 
     # "lambda_declaration": {
     #   "name": "meta.function.gdscript",
@@ -423,6 +481,7 @@ contexts:
     #     { "include": "#any_property" }
     #   ]
     # },
+
     # "function_declaration": {
     #   "name": "meta.function.gdscript",
     #   "begin": "(?x) \\s*\n (func) \\s+\n ([a-zA-Z_]\\w*) \\s*\n (?=\\()",
@@ -444,23 +503,45 @@ contexts:
     #   ]
     # },
 
+  # From generated syntax
+  # TODO Check end2
+  function_declaration:
+    - match: |-
+        (?x) \s*
+        (func) \s+
+        ([a-zA-Z_]\w*) \s*
+        (?=\()
+      captures:
+        1: keyword.language.gdscript storage.type.function.gdscript
+        2: entity.name.function.gdscript
+      push:
+        - meta_scope: meta.function.gdscript
+        - match: '(:|(?=[#''"\n]))'
+          pop: true
+        - include: parameters
+        - include: line_continuation
+        - include: base_expression
+
   parameters:
     - match: (\()
       captures:
         1: punctuation.definition.parameters.begin.gdscript
-      scope: meta.function.parameters.gdscript"
       push:
+        - meta_scope: meta.function.parameters.gdscript
+        - match: (\))
+          captures:
+            1: punctuation.definition.parameters.end.gdscript
+          pop: true
         - include: annotated_parameter
-        - match: '(?x)\n  ([a-zA-Z_]\w*)\n    \s* (?: (,) | (?=[)#\n=]))\n'
+        - match: |-
+            (?x)
+            ([a-zA-Z_]\w*)
+              \s* (?: (,) | (?=[)#\n=]))
           captures:
             1: variable.parameter.function.language.gdscript
             2: punctuation.separator.parameters.gdscript
         - include: comment
         - include: loose_default
-        - match: (\))
-          captures:
-            1: punctuation.definition.parameters.end.gdscript
-          pop: true
 
   loose_default:
     - match: (=)
@@ -474,55 +555,57 @@ contexts:
           pop: true
 
   annotated_parameter:
-    - match: (?x)\n \s* ([a-zA-Z_]\w*) \s* (:)\s* ([a-zA-Z_]\w*)? \n
+    - match: |-
+        (?x)
+        \s* ([a-zA-Z_]\w*) \s* (:)\s* ([a-zA-Z_]\w*)?
       captures:
         1: variable.parameter.function.language.gdscript
         2: punctuation.separator.annotation.gdscript
         3: entity.name.type.class.gdscript
       push:
-        - include: base_expression
-        - match: =(?!=)
-          scope: keyword.operator.assignment.gdscript
         - match: (,)|(?=\))
           captures:
             1: punctuation.separator.parameters.gdscript
           pop: true
+        - include: base_expression
+        - match: '=(?!=)'
+          scope: keyword.operator.assignment.gdscript
 
   curly_braces:
-    - match: \{
+    - match: '\{'
       captures:
         0: punctuation.definition.dict.begin.gdscript
       push:
         - include: base_expression
         - include: any_variable
-        - match: \}
+        - match: '\}'
           captures:
             0: punctuation.definition.dict.end.gdscript
           pop: true
 
   square_braces:
-    - match: \[
+    - match: '\['
       captures:
         0: punctuation.definition.list.begin.gdscript
       push:
-        - include: base_expression
-        - include: any_variable
-        - match: \]
+        - match: '\]'
           captures:
             0: punctuation.definition.list.end.gdscript
           pop: true
+        - include: base_expression
+        - include: any_variable
 
   round_braces:
     - match: \(
       captures:
         0: punctuation.parenthesis.begin.gdscript
       push:
-        - include: base_expression
-        - include: any_variable
         - match: \)
           captures:
             0: punctuation.parenthesis.end.gdscript
           pop: true
+        - include: base_expression
+        - include: any_variable
 
   line_continuation:
     - match: (\\)\s*(\S.*$\n?)
@@ -533,77 +616,74 @@ contexts:
       captures:
         1: punctuation.separator.continuation.line.gdscript
       push:
-        - include: base_expression
-        - match: (?x)\n  (?=^\s*$)\n  |\n  (?! (\s* [rR]? (\'\'\'|\"\"\"|\'|\"))\n      |\n      (\G $)  (?# '\\G' is necessary for ST)\n  )\n
+        - match: |-
+            (?x)
+            (?=^\s*$)
+            |
+            (?! (\s* [rR]? (\'\'\'|\"\"\"|\'|\"))
+                |
+                (\G $)  (?# '\G' is necessary for ST)
+            )
           pop: true
+        - include: base_expression
 
   any_method:
-    - match: \b([A-Za-z_]\w*)\b(?=\s*(?:[(]))
+    - match: '\b([A-Za-z_]\w*)\b(?=\s*(?:[(]))'
       scope: entity.name.function.other.gdscript
 
   any_variable:
-    - match: \b(?<![@\$#%])([A-Za-z_]\w*)\b(?![(])
+    - match: '\b(?<![@\$#%])([A-Za-z_]\w*)\b(?![(])'
       scope: variable.other.gdscript
 
   any_property:
-    - match: \b(\.)\s*(?<![@\$#%])(?:([A-Z_][A-Z_0-9]*)|([A-Za-z_]\w*))\b(?![(])
+    - match: '\b(\.)\s*(?<![@\$#%])(?:([A-Z_][A-Z_0-9]*)|([A-Za-z_]\w*))\b(?![(])'
       captures:
         1: punctuation.accessor.gdscript
         2: constant.language.gdscript
         3: variable.other.property.gdscript
 
-  # Regular function call of the type \"name(args)\"
   function_call:
-    - match: (?=\b[a-zA-Z_]\w*\b\()
-      scope: meta.function-call.gdscript
+    - match: '(?=\b[a-zA-Z_]\w*\b\()'
+      comment: Regular function call of the type "name(args)"
       push:
-        - include: function_name
-        - include: function_arguments
+        - meta_scope: meta.function-call.gdscript
         - match: (\))
           captures:
             1: punctuation.definition.arguments.end.gdscript
           pop: true
+        - include: function_name
+        - include: function_arguments
 
   function_name:
     - include: builtin_classes
     - match: \b(preload)\b
       scope: keyword.language.gdscript
-    # Some color schemas support meta.function-call.generic scope
-    - match: \b([a-zA-Z_]\w*)\b
+    - match: '\b([a-zA-Z_]\w*)\b'
+      comment: Some color schemas support meta.function-call.generic scope
       scope: entity.name.function.gdscript
 
-    # "function_arguments": {
-    #   "begin": "(\\()",
-    #   "beginCaptures": { "1": { "name": "punctuation.definition.arguments.begin.gdscript" } },
-    #   "end": "(?=\\))(?!\\)\\s*\\()",
-    #   "contentName": "meta.function.parameters.gdscript",
-    #   "patterns": [
-    #     {
-    #       "name": "punctuation.separator.arguments.gdscript",
-    #       "match": "(,)"
-    #     },
-    #     {
-    #       "match": "\\b([a-zA-Z_]\\w*)\\s*(=)(?!=)",
-    #       "captures": {
-    #         "1": { "name": "variable.parameter.function-call.gdscript" },
-    #         "2": { "name": "keyword.operator.assignment.gdscript" }
-    #       }
-    #     },
-    #     {
-    #       "name": "keyword.operator.assignment.gdscript",
-    #       "match": "=(?!=)"
-    #     },
-    #     { "include": "#base_expression" },
-    #     {
-    #       "match": "\\s*(\\))\\s*(\\()",
-    #       "captures": {
-    #         "1": { "name": "punctuation.definition.arguments.end.gdscript" },
-    #         "2": { "name": "punctuation.definition.arguments.begin.gdscript" }
-    #       }
-    #     },
-    #     { "include": "#letter" },
-    #     { "include": "#any_variable" },
-    #     { "include": "#any_property" },
-    #     { "include": "#keywords" }
-    #   ]
-    # }
+  function_arguments:
+    - match: (\()
+      captures:
+        1: punctuation.definition.arguments.begin.gdscript
+      push:
+        - meta_content_scope: meta.function.parameters.gdscript
+        - match: (?=\))(?!\)\s*\()
+          pop: true
+        - match: (,)
+          scope: punctuation.separator.arguments.gdscript
+        - match: '\b([a-zA-Z_]\w*)\s*(=)(?!=)'
+          captures:
+            1: variable.parameter.function-call.gdscript
+            2: keyword.operator.assignment.gdscript
+        - match: '=(?!=)'
+          scope: keyword.operator.assignment.gdscript
+        - include: base_expression
+        - match: \s*(\))\s*(\()
+          captures:
+            1: punctuation.definition.arguments.end.gdscript
+            2: punctuation.definition.arguments.begin.gdscript
+        - include: letter
+        - include: any_variable
+        - include: any_property
+        - include: keywords
