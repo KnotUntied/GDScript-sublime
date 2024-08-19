@@ -3,6 +3,7 @@
 # http://www.sublimetext.com/docs/syntax.html
 scope: source.gdresource
 file_extensions:
+  - tres
   - tscn
 
 contexts:
