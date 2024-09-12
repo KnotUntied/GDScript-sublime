@@ -1,9 +1,9 @@
 <snippet>
-	<content><![CDATA[func ${1:method}(${2:args}) -> ${3:void}:
-	${4:pass}
+	<content><![CDATA[func _init() -> void:
+	${1:pass}
 ]]></content>
 	<!-- Optional: Set a tabTrigger to define how to trigger the snippet -->
-	<tabTrigger>func</tabTrigger>
+	<tabTrigger>init</tabTrigger>
 	<!-- Optional: Set a scope to limit where the snippet will trigger -->
 	<scope>source.gdscript</scope>
 	<description>function define</description>
